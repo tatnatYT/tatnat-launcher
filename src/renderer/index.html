@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TTT Client</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="logo" src="../../assets/logo-64.png" alt="">
+      <div class="brand-text">TTT<span>CLIENT</span></div>
+      <span class="version-pill" id="appVersion"></span>
+    </div>
+
+    <nav id="nav">
+      <div class="nav-indicator" id="navIndicator" aria-hidden="true"></div>
+      <span class="nav-label">Game</span>
+      <button class="nav-btn active" data-tab="play" data-key="1">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>
+        <span class="nav-text">Play</span>
+        <span class="nav-dot" id="runDot" hidden></span>
+        <kbd>Ctrl 1</kbd>
+      </button>
+      <button class="nav-btn" data-tab="mods" data-key="2">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span>
+        <span class="nav-text">Mods</span>
+        <span class="nav-badge" id="modsBadge" hidden></span>
+        <kbd>Ctrl 2</kbd>
+      </button>
+
+      <span class="nav-label">Launcher</span>
+      <button class="nav-btn" data-tab="accounts" data-key="3">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></span>
+        <span class="nav-text">Accounts</span>
+        <kbd>Ctrl 3</kbd>
+      </button>
+      <button class="nav-btn" data-tab="console" data-key="4">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg></span>
+        <span class="nav-text">Console</span>
+        <span class="nav-dot unread" id="logDot" hidden></span>
+        <kbd>Ctrl 4</kbd>
+      </button>
+      <button class="nav-btn" data-tab="settings" data-key="5">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
+        <span class="nav-text">Settings</span>
+        <kbd>Ctrl 5</kbd>
+      </button>
+      <button class="nav-btn" data-tab="credits" data-key="6">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg></span>
+        <span class="nav-text">Credits</span>
+        <kbd>Ctrl 6</kbd>
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <button class="status-card" id="statusCard" data-tab="play">
+        <span class="status-light" id="statusLight"></span>
+        <span class="status-text">
+          <strong id="statusTitle">Ready to play</strong>
+          <span id="statusSub">—</span>
+        </span>
+      </button>
+      <button class="folder-btn" id="openFolder">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></span>
+        Game folder
+      </button>
+      <button class="account-card" id="accountCard" data-tab="accounts">
+        <div class="head" id="cardHead"></div>
+        <div class="account-meta">
+          <strong id="cardName">Not signed in</strong>
+          <span id="cardType">Sign in to play</span>
+        </div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main>
+    <section class="tab active" id="tab-play">
+      <canvas id="scene"></canvas>
+      <div class="hero-text">
+        <h1 id="heroVersion">Minecraft</h1>
+        <p id="heroSub">Pick a version and press play.</p>
+      </div>
+
+      <div class="dock">
+        <div class="field grow">
+          <div class="field-head">
+            <span>Version</span>
+            <div class="chips" id="typeChips">
+              <button data-type="release" class="on">Releases</button>
+              <button data-type="snapshot">Snapshots</button>
+              <button data-type="old_beta">Beta</button>
+              <button data-type="old_alpha" title="Alpha &amp; Classic">Alpha</button>
+            </div>
+          </div>
+          <select id="version"></select>
+        </div>
+        <div class="field">
+          <div class="field-head"><span>Loader</span></div>
+          <div class="segmented" id="loader">
+            <button data-loader="vanilla">Vanilla</button>
+            <button data-loader="fabric">Fabric</button>
+          </div>
+        </div>
+        <button class="play-btn" id="play">PLAY</button>
+        <div class="progress" id="progressWrap" hidden>
+          <div class="progress-label"><span id="progressStage">Preparing</span><span id="progressCount"></span></div>
+          <div class="progress-bar"><div id="progressFill"></div></div>
+        </div>
+      </div>
+      <div class="toast" id="toast" hidden></div>
+    </section>
+
+    <section class="tab" id="tab-mods">
+      <div class="panel-head">
+        <div>
+          <h2>Mods</h2>
+          <p class="sub" id="modsTarget">Fabric · Minecraft</p>
+        </div>
+        <div class="head-actions">
+          <div class="segmented small" id="modsView">
+            <button data-view="browse" class="on">Browse</button>
+            <button data-view="installed">Installed <span id="installedCount"></span></button>
+          </div>
+          <button class="ghost-btn" id="openModsFolder">Open folder</button>
+        </div>
+      </div>
+      <div class="mods-banner" id="fabricBanner" hidden>
+        <span>Mods need the Fabric loader. Play is set to <b>Vanilla</b>.</span>
+        <button class="ghost-btn" id="useFabric">Use Fabric</button>
+      </div>
+      <div class="mods-browse" id="modsBrowse">
+        <div class="search">
+          <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <input id="modSearch" placeholder="Search Modrinth mods…" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="mod-list" id="modResults"></div>
+      </div>
+      <div class="mods-installed" id="modsInstalled" hidden>
+        <div class="mod-list" id="installedList"></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-accounts">
+      <div class="panel-head"><h2>Accounts</h2></div>
+      <div class="accounts">
+        <div id="accountList"></div>
+        <div class="account-actions">
+          <button class="ms-btn" data-action="ms-login">
+            <svg viewBox="0 0 21 21"><path fill="#f25022" d="M0 0h10v10H0z"/><path fill="#7fba00" d="M11 0h10v10H11z"/><path fill="#00a4ef" d="M0 11h10v10H0z"/><path fill="#ffb900" d="M11 11h10v10H11z"/></svg>
+            Add Microsoft account
+          </button>
+          <form class="offline-form" id="offlineForm">
+            <input id="offlineName" placeholder="Offline name" maxlength="16" spellcheck="false" autocomplete="off">
+            <button class="ghost-btn" type="submit">Add offline</button>
+          </form>
+        </div>
+        <p class="note">Microsoft accounts play online: multiplayer servers, Realms and your own skin.
+          Offline accounts only work in singleplayer and on <code>online-mode=false</code> servers.</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-console">
+      <div class="panel-head">
+        <h2>Console</h2>
+        <button class="ghost-btn" id="clearLog">Clear</button>
+      </div>
+      <pre id="log"></pre>
+    </section>
+
+    <section class="tab" id="tab-settings">
+      <div class="panel-head"><h2>Settings</h2></div>
+      <div class="settings">
+        <div class="setting">
+          <div>
+            <h3>Memory</h3>
+            <p>Maximum RAM given to the game.</p>
+          </div>
+          <div class="memory">
+            <input type="range" id="memory" min="1024" max="16384" step="512">
+            <output id="memoryOut"></output>
+          </div>
+        </div>
+        <div class="setting discord-setting">
+          <div class="discord-top">
+            <div>
+              <h3>Show in Discord</h3>
+              <p>Your Discord status shows TTT Client, the version you play and for how long.</p>
+            </div>
+            <input type="checkbox" class="switch" id="discordOn">
+          </div>
+          <div class="discord-id">
+            <input id="discordId" placeholder="Discord application ID" spellcheck="false" autocomplete="off" inputmode="numeric">
+            <span class="discord-status" id="discordStatus"></span>
+          </div>
+          <p class="discord-help">Create an application named <b>TTT Client</b> in the
+            <button class="link-btn" data-link="https://discord.com/developers/applications">Discord Developer Portal</button>
+            and paste its Application ID here. The name is what Discord shows as "Playing".</p>
+        </div>
+        <label class="setting">
+          <div>
+            <h3>Minimise on launch</h3>
+            <p>Tuck the launcher away while you play.</p>
+          </div>
+          <input type="checkbox" class="switch" id="closeOnLaunch">
+        </label>
+        <p class="note">Games, worlds and Java live in their own folder, separate from the official launcher.
+          The right Java version for each Minecraft version is downloaded from Mojang automatically.</p>
+      </div>
+    </section>
+    <section class="tab" id="tab-credits">
+      <div class="panel-head"><h2>Credits</h2></div>
+      <div class="credits">
+        <div class="creator">
+          <img class="logo creator-head" src="../../assets/logo-256.png" alt="tatnat's Minecraft head">
+          <div>
+            <span class="eyebrow">Made by</span>
+            <h3>tatnat</h3>
+            <p>Thanks for playing on TTT Client! Subscribe for more features.</p>
+            <button class="yt-btn" data-link="https://www.youtube.com/@tatnatmc">
+              <svg viewBox="0 0 24 24"><path fill="#fff" d="M23 7.2a3 3 0 00-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 001 7.2 31 31 0 00.5 12a31 31 0 00.5 4.8 3 3 0 002.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 002.1-2.1 31 31 0 00.5-4.8 31 31 0 00-.5-4.8z"/><path fill="#e62117" d="M9.7 15.1l5.8-3.1-5.8-3.1z"/></svg>
+              youtube.com/@tatnatmc
+            </button>
+          </div>
+        </div>
+        <h4>Powered by</h4>
+        <div class="powered">
+          <button class="power-card" data-link="https://www.minecraft.net/"><strong>Minecraft</strong><span>Game, assets and Java runtime by Mojang Studios</span></button>
+          <button class="power-card" data-link="https://fabricmc.net/"><strong>Fabric</strong><span>Mod loader</span></button>
+          <button class="power-card" data-link="https://modrinth.com/"><strong>Modrinth</strong><span>Mod library</span></button>
+          <button class="power-card" data-link="https://www.electronjs.org/"><strong>Electron</strong><span>App framework</span></button>
+        </div>
+        <p class="note">TTT Client is not affiliated with Mojang Studios or Microsoft.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- First-run sign-in screen -->
+  <div class="login" id="login" hidden>
+    <div class="login-card">
+      <img class="logo big" src="../../assets/logo-256.png" alt="">
+      <h1>TTT CLIENT</h1>
+      <p>Sign in with the Microsoft account that owns Minecraft: Java Edition.</p>
+      <button class="ms-btn wide" data-action="ms-login">
+        <svg viewBox="0 0 21 21"><path fill="#f25022" d="M0 0h10v10H0z"/><path fill="#7fba00" d="M11 0h10v10H11z"/><path fill="#00a4ef" d="M0 11h10v10H0z"/><path fill="#ffb900" d="M11 11h10v10H11z"/></svg>
+        Sign in with Microsoft
+      </button>
+      <p class="login-error" id="loginError" hidden></p>
+      <button class="link-btn" id="loginOffline">Play offline instead</button>
+    </div>
+  </div>
+
+  <script src="scene.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

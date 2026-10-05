@@ -1,0 +1,48 @@
+{
+  "name": "tatnat-client",
+  "productName": "TTT Client",
+  "version": "0.1.0",
+  "description": "TTT Client - a custom Minecraft launcher",
+  "author": "tatnat",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node scripts/smoke.js",
+    "dist": "electron-builder --win"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.tatnat.client",
+    "productName": "TTT Client",
+    "copyright": "tatnat",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "assets/**/*", "package.json"],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TTT Client",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "artifactName": "TTT-Client-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "TTT-Client-Portable-${version}.${ext}"
+    }
+  }
+}
