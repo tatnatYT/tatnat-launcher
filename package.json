@@ -9,10 +9,11 @@
   "scripts": {
     "start": "electron .",
     "smoke": "node scripts/smoke.js",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win --publish never"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "electron": "^38.0.0",
@@ -22,13 +23,29 @@
     "appId": "com.tatnat.client",
     "productName": "tatnat launcher",
     "copyright": "tatnat",
-    "directories": { "output": "dist" },
-    "files": ["src/**/*", "assets/**/*", "package.json"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
     "win": {
       "icon": "assets/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -43,6 +60,15 @@
     },
     "portable": {
       "artifactName": "tatnat-launcher-Portable-${version}.${ext}"
-    }
-  }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tatnatYT",
+        "repo": "tatnat-launcher",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": "https://github.com/tatnatYT/tatnat-launcher"
 }

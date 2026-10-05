@@ -7,7 +7,7 @@ const { downloadFile } = require('./download');
 const { readModMeta } = require('./filemeta');
 
 const API = 'https://api.modrinth.com/v2';
-const HEADERS = { 'User-Agent': 'tatnat/ttt-client/0.2.0' };
+const HEADERS = { 'User-Agent': 'tatnatYT/tatnat-launcher/0.3.0 (github.com/tatnatYT/tatnat-launcher)' };
 
 async function api(pathAndQuery, init = {}) {
   const res = await fetch(API + pathAndQuery, { ...init, headers: { ...HEADERS, ...(init.headers || {}) } });

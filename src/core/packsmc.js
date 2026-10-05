@@ -3,7 +3,7 @@
 // download_url (their rule for third-party apps); Packs+ exclusives are personal-use only,
 // so they're never downloaded here.
 const BASE = 'https://packsmc.com/api/v1';
-const USER_AGENT = 'tatnatlauncher/0.3 (+https://github.com/koens-bit/ttt-client)';
+const USER_AGENT = 'tatnatlauncher/0.3 (+https://github.com/tatnatYT/tatnat-launcher)';
 
 class PacksMcError extends Error {}
 
@@ -66,33 +66,21 @@ async function search({ key, query = '', cursor = null, limit = 30 }) {
   return { hits, nextCursor: body.next_cursor || body.nextCursor || null };
 }
 
-// Fetches the pack file via the API's canonical download_url. Returns { filename, data, pack }.
-async function download({ key, id }) {
+// PacksMC's rule: "Downloads must flow through the PacksMC site - the API does not issue file URLs."
+// So the launcher only fetches what it needs to recognise the file once the player downloads it.
+async function packInfo({ key, id }) {
   const [info, detail] = await Promise.all([
     call(key, `/packs/${encodeURIComponent(id)}/download`),
-    call(key, `/packs/${encodeURIComponent(id)}`).catch(() => null),
+    call(key, `/packs/${encodeURIComponent(id)}`),
   ]);
-  const pack = normalize(detail?.data || detail?.pack || detail || { id });
-  if (info.requires_packs_plus) throw new PacksMcError(`${pack.title} is a Packs+ exclusive on PacksMC.`);
-  if (!info.download_url) throw new PacksMcError('PacksMC did not give a download link for that pack.');
-
-  const url = new URL(info.download_url);
-  const sameSite = /(^|\.)packsmc\.com$/.test(url.hostname);
-  const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': USER_AGENT, ...(sameSite ? { Authorization: `Bearer ${key}` } : {}) } });
-  if (!res.ok) throw new PacksMcError(`PacksMC download failed (${res.status}).`);
-  const data = Buffer.from(await res.arrayBuffer());
-  if (data.subarray(0, 2).toString() !== 'PK') {
-    // Not a zip (e.g. a page you have to click through) - let the player finish it in the browser.
-    const err = new PacksMcError(`${pack.title} can only be downloaded on the PacksMC website.`);
-    err.webUrl = info.web_url || pack.webUrl;
-    throw err;
-  }
-  const disposition = res.headers.get('content-disposition') || '';
-  const named = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-  let filename = named ? decodeURIComponent(named[1]) : `${pack.slug || id}.zip`;
-  filename = filename.replace(/[\\/:*?"<>|]+/g, '_');
-  if (!/\.zip$/i.test(filename)) filename += '.zip';
-  return { filename, data, pack: { ...pack, webUrl: info.web_url || pack.webUrl } };
+  const d = detail?.data || detail?.pack || detail || {};
+  const pack = normalize({ ...d, id: d.id || id });
+  if (info.requires_packs_plus || d.is_exclusive) throw new PacksMcError(`${pack.title} is a Packs+ exclusive on PacksMC.`);
+  return {
+    ...pack,
+    pageUrl: info.download_url || info.web_url || pack.webUrl,
+    sizeBytes: Number(d.file_size_bytes) || 0,
+  };
 }
 
-module.exports = { PacksMcError, checkKey, search, download };
+module.exports = { PacksMcError, checkKey, search, packInfo };

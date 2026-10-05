@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const AdmZip = require('adm-zip');
 const { api, pickVersion } = require('./modrinth');
 const { downloadFile } = require('./download');
+const curseforge = require('./curseforge');
 
 const packsRoot = root => path.join(root, 'modpacks');
 const packDir = (root, id) => path.join(packsRoot(root), path.basename(id));
@@ -203,6 +204,56 @@ async function importMrpack(root, file, { name, icon = null, source = null, onSt
   return meta;
 }
 
+// ---------- import (CurseForge .zip) ----------
+async function importCurseForge(root, file, { key = '', name, icon = null, source = null, onStatus = () => {} } = {}) {
+  const manifest = curseforge.readManifest(file);
+  if (!manifest) throw new Error("That .zip isn't a CurseForge modpack (no manifest.json).");
+  const mc = manifest.minecraft?.version;
+  if (!mc) throw new Error("This modpack doesn't say which Minecraft version it's for.");
+  const loaders = manifest.minecraft.modLoaders || [];
+  const loader = (loaders.find(l => l.primary) || loaders[0])?.id || '';
+  if (!loader.startsWith('fabric-')) {
+    throw new Error(`tatnat launcher runs Fabric modpacks; this one needs ${loader.split('-')[0] || 'another loader'}.`);
+  }
+  const meta = await create(root, {
+    name: name || manifest.name || path.basename(file, '.zip'),
+    mcVersion: mc, loaderVersion: loader.slice('fabric-'.length), icon,
+    source: source || { curseforge: true },
+  });
+  const dir = packDir(root, meta.id);
+  try {
+    const manual = await curseforge.installManifestFiles({ dir, zip: new AdmZip(file), manifest, key, onStatus, safeJoin });
+    return manual.length ? update(root, meta.id, { manual }) : meta;
+  } catch (err) {
+    await remove(root, meta.id);
+    throw err;
+  }
+}
+
+// ---------- import from a link ----------
+async function importLink(root, url, { curseforgeKey = '', onStatus } = {}) {
+  let u;
+  try { u = new URL(url.trim()); } catch { throw new Error("That doesn't look like a link."); }
+  const parts = u.pathname.split('/').filter(Boolean);
+  if (/(^|\.)modrinth\.com$/.test(u.hostname)) {
+    const i = parts.findIndex(p => p === 'modpack');
+    if (i < 0 || !parts[i + 1]) throw new Error('Paste a Modrinth modpack link, like modrinth.com/modpack/fabulously-optimized');
+    return installFromModrinth(root, parts[i + 1], { onStatus });
+  }
+  if (/(^|\.)curseforge\.com$/.test(u.hostname)) {
+    const i = parts.findIndex(p => p === 'modpacks');
+    if (i < 0 || !parts[i + 1]) throw new Error('Paste a CurseForge modpack link, like curseforge.com/minecraft/modpacks/<name>');
+    if (!curseforgeKey) throw new Error('CurseForge links need a CurseForge API key (Settings). You can also import the modpack .zip instead.');
+    const dl = await curseforge.downloadModpackBySlug(curseforgeKey, parts[i + 1]);
+    try {
+      return await importCurseForge(root, dl.tmp, { key: curseforgeKey, name: dl.name, icon: dl.icon, source: { curseforge: true, projectId: dl.projectId }, onStatus });
+    } finally {
+      await fsp.rm(dl.tmp, { force: true });
+    }
+  }
+  throw new Error('Only Modrinth and CurseForge modpack links work here.');
+}
+
 // Installs a modpack straight from Modrinth (newest Fabric release, matching mcVersion when given).
 async function installFromModrinth(root, projectId, { mcVersion, onStatus } = {}) {
   const params = new URLSearchParams({ loaders: JSON.stringify(['fabric']) });
@@ -224,4 +275,4 @@ async function installFromModrinth(root, projectId, { mcVersion, onStatus } = {}
   }
 }
 
-module.exports = { list, create, update, remove, packDir, readMeta, exportPack, importMrpack, installFromModrinth };
+module.exports = { list, create, update, remove, packDir, readMeta, exportPack, importMrpack, importCurseForge, importLink, installFromModrinth };

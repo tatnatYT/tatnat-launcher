@@ -660,7 +660,8 @@ function renderPackResults() {
       link.title = 'Open on PacksMC';
       link.addEventListener('click', () => api.openExternal(p.webUrl));
     }
-    card.append(modIcon(p.icon), body, actionButton(state, () => (pmc ? installPacksMc(p) : installPack(p.id))));
+    card.append(modIcon(p.icon), body, actionButton(state, () => (pmc ? installPacksMc(p) : installPack(p.id)),
+      pmc ? { idle: 'Get on PacksMC', busy: 'Waiting for download…' } : {}));
     list.append(card);
   }
   const more = pmc ? !!packs.cursor : packs.results.length < packs.total;
@@ -744,20 +745,29 @@ async function installPack(id) {
   }
 }
 
+// PacksMC only allows downloads on its own site: open the pack page, then the main process
+// spots the zip in Downloads and adds it (packsmc:added below).
 async function installPacksMc(p) {
   const key = `pmc:${p.id}`;
   packs.busy.add(key);
   renderPackResults();
   try {
-    const title = await api.packsmcInstall({ target: target(), id: p.id });
-    toast(`${title} installed from PacksMC and switched on.`);
+    const { title } = await api.packsmcGet({ target: target(), id: p.id });
+    toast(`Click Download on the PacksMC page - ${title} is added here automatically when it lands in Downloads.`);
   } catch (err) {
-    toast(cleanError(err));
-  } finally {
     packs.busy.delete(key);
-    await loadInstalledPacks();
+    renderPackResults();
+    toast(cleanError(err));
   }
 }
+
+api.onPacksmcAdded(async r => {
+  packs.busy.delete(`pmc:${r.id}`);
+  if (r.error) toast(r.error);
+  else if (r.timedOut) toast(`Stopped waiting for ${r.title}. Downloaded it anyway? Drag the .zip onto the launcher.`);
+  else toast(`${r.title} added from PacksMC and switched on.`);
+  await loadInstalledPacks();
+});
 
 async function setPackSource(source) {
   packs.source = source;
@@ -871,6 +881,13 @@ function renderModpacks() {
     const p = document.createElement('p');
     p.textContent = `Minecraft ${pack.mcVersion} · ${pack.modCount} mod${pack.modCount === 1 ? '' : 's'}`;
     text.append(h, p);
+    if (pack.manual?.length) {
+      const warn = document.createElement('span');
+      warn.className = 'pack-warn';
+      warn.textContent = `⚠ ${pack.manual.length} mod${pack.manual.length === 1 ? '' : 's'} to download by hand`;
+      warn.addEventListener('click', () => showManual(pack));
+      text.append(warn);
+    }
     top.append(packTile(pack), text);
 
     const actions = document.createElement('div');
@@ -923,9 +940,7 @@ async function importModpacks(files) {
   try {
     const imported = await api.importModpacks({ files });
     if (!imported.length) { $('toast').hidden = true; return; }
-    await loadModpacks();
-    setActivePack(imported[imported.length - 1].id);
-    toast(`Imported ${imported.map(p => p.name).join(', ')}.`);
+    await afterImport(imported);
   } catch (err) {
     toast(cleanError(err));
   }
@@ -985,7 +1000,63 @@ async function installModrinthPack(p) {
 debounceInput('modpackSearch', q => { mp.query = q; searchModpacks(); });
 wireSegmented('modpacksView', { mine: 'modpacksMine', browse: 'modpacksBrowse' });
 document.querySelector('#modpacksView [data-view="browse"]').addEventListener('click', () => { if (!mp.searched) searchModpacks(); });
-$('importModpack').addEventListener('click', () => importModpacks(null));
+$('importModpack').addEventListener('click', () => {
+  $('importStatus').hidden = true;
+  $('importLink').value = '';
+  $('importModal').hidden = false;
+});
+$('importClose').addEventListener('click', () => { $('importModal').hidden = true; });
+$('importFileBtn').addEventListener('click', async () => {
+  $('importModal').hidden = true;
+  await importModpacks(null);
+});
+$('importLinkForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const url = $('importLink').value.trim();
+  if (!url) return;
+  $('importLinkBtn').disabled = true;
+  $('importStatus').hidden = false;
+  $('importStatus').textContent = 'Importing…';
+  try {
+    const meta = await api.importModpackLink({ url });
+    $('importModal').hidden = true;
+    await afterImport([meta]);
+  } catch (err) {
+    $('importStatus').textContent = cleanError(err);
+  } finally {
+    $('importLinkBtn').disabled = false;
+  }
+});
+
+function showManual(pack) {
+  $('manualIntro').textContent = `${pack.name}: ${pack.manual.length} mod${pack.manual.length === 1 ? '' : 's'} couldn't be downloaded automatically` +
+    (pack.manual.some(m => /^CurseForge project/.test(m.name)) ? ' (add a CurseForge API key in Settings to fetch them for you).' : ' (their authors only allow downloads on CurseForge).');
+  const list = $('manualList');
+  list.replaceChildren();
+  for (const m of pack.manual) {
+    const row = document.createElement('div');
+    row.className = 'manual-row';
+    const name = document.createElement('span');
+    name.textContent = m.fileName ? `${m.name} - ${m.fileName}` : m.name;
+    const open = document.createElement('button');
+    open.className = 'ghost-btn';
+    open.textContent = 'Open';
+    open.addEventListener('click', () => api.openExternal(m.url));
+    row.append(name, open);
+    list.append(row);
+  }
+  $('manualModal').hidden = false;
+}
+$('manualClose').addEventListener('click', () => { $('manualModal').hidden = true; });
+
+async function afterImport(imported) {
+  await loadModpacks();
+  const last = imported[imported.length - 1];
+  setActivePack(last.id);
+  toast(`Imported ${imported.map(p => p.name).join(', ')}.`);
+  const withManual = imported.find(p => p.manual?.length);
+  if (withManual) showManual(withManual);
+}
 $('newModpack').addEventListener('click', openNewPack);
 $('editPack').addEventListener('click', () => showTab('mods'));
 $('leavePack').addEventListener('click', () => setActivePack(null));
@@ -1050,15 +1121,80 @@ document.addEventListener('drop', e => {
   const jars = files.filter(f => /\.jar$/i.test(f));
   const zips = files.filter(f => /\.zip$/i.test(f));
   const mrpacks = files.filter(f => /\.mrpack$/i.test(f));
-  // Route by file type, whatever tab you're on.
-  if (mrpacks.length) importModpacks(mrpacks);
+  // Route by file type, whatever tab you're on. A .zip is a texture pack unless it's a CurseForge modpack export.
+  api.classifyZips(zips).then(({ modpacks: cfPacks, packs: texturePackZips }) => {
+    if (mrpacks.length || cfPacks.length) importModpacks([...mrpacks, ...cfPacks]);
+    if (texturePackZips.length) { showTab('packs'); addPackFiles(texturePackZips); }
+  });
   if (jars.length) { showTab('mods'); addModFiles(jars); }
-  if (zips.length) { showTab('packs'); addPackFiles(zips); }
   if (!jars.length && !zips.length && !mrpacks.length) toast('Drop .jar mods, .zip texture packs or .mrpack modpacks.');
 });
 
 // ---------- credits / external links ----------
 document.querySelectorAll('[data-link]').forEach(b => b.addEventListener('click', () => api.openExternal(b.dataset.link)));
+
+// ---------- self-update ----------
+let updateState = { state: 'idle' };
+function renderUpdate(s) {
+  updateState = s;
+  const card = $('updateCard');
+  card.classList.toggle('ready', s.state === 'ready');
+  const show = ['downloading', 'ready', 'portable'].includes(s.state);
+  card.hidden = !show;
+  if (s.state === 'downloading') {
+    $('updateTitle').textContent = `Updating to v${s.version || '…'}`;
+    $('updateSub').textContent = `Downloading… ${s.percent || 0}%`;
+    $('updateFill').style.width = `${s.percent || 0}%`;
+  } else if (s.state === 'ready') {
+    $('updateTitle').textContent = `v${s.version} is ready`;
+    $('updateSub').textContent = 'Click to restart and update';
+  } else if (s.state === 'portable') {
+    $('updateTitle').textContent = `v${s.version} is out`;
+    $('updateSub').textContent = 'Click to download it';
+  }
+  const text = {
+    idle: 'tatnat launcher updates itself from GitHub.',
+    dev: 'Updates are off while running from source.',
+    checking: 'Checking for updates…',
+    none: `You're on the newest version (v${s.current || ''}).`,
+    downloading: `Downloading v${s.version || ''}… ${s.percent || 0}%`,
+    ready: `v${s.version} downloaded - restart to finish (or it installs when you close the launcher).`,
+    portable: `v${s.version} is available. The portable exe can't update itself - download the new one.`,
+    error: `Couldn't check for updates: ${s.message || 'unknown error'}`,
+  };
+  $('updateSetting').textContent = text[s.state] || text.idle;
+}
+
+$('updateCard').addEventListener('click', async () => {
+  if (updateState.state === 'portable') api.openExternal(updateState.url);
+  else if (updateState.state === 'ready') {
+    try { await api.installUpdate(); } catch (err) { toast(cleanError(err)); }
+  }
+});
+$('checkUpdates').addEventListener('click', () => api.checkForUpdate());
+api.onUpdate(renderUpdate);
+api.updateStatus().then(renderUpdate);
+
+// ---------- CurseForge key (Settings) ----------
+async function renderCfKey() {
+  const has = await api.curseforgeHasKey();
+  $('cfKey').placeholder = has ? 'Key saved ✓ (paste to replace)' : 'Paste key';
+}
+$('cfKeyForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('cfKeySave').disabled = true;
+  try {
+    const saved = await api.curseforgeSetKey($('cfKey').value);
+    $('cfKey').value = '';
+    toast(saved ? 'CurseForge key saved - CurseForge modpacks now download their mods.' : 'CurseForge key removed.');
+    renderCfKey();
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    $('cfKeySave').disabled = false;
+  }
+});
+renderCfKey();
 
 // ---------- FPS Boost pack (Settings) ----------
 async function renderBoostPack() {

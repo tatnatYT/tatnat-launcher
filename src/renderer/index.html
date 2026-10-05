@@ -69,6 +69,14 @@
     </nav>
 
     <div class="sidebar-foot">
+      <button class="update-card" id="updateCard" hidden>
+        <span class="update-icon">⬆</span>
+        <span class="status-text">
+          <strong id="updateTitle">Update available</strong>
+          <span id="updateSub"></span>
+        </span>
+        <span class="update-bar"><i id="updateFill"></i></span>
+      </button>
       <button class="status-card" id="statusCard" data-tab="play">
         <span class="status-light" id="statusLight"></span>
         <span class="status-text">
@@ -224,11 +232,11 @@
             <button data-view="mine" class="on">My modpacks</button>
             <button data-view="browse">Browse Modrinth</button>
           </div>
-          <button class="ghost-btn" id="importModpack" title="Import a .mrpack file">Import</button>
+          <button class="ghost-btn" id="importModpack" title="Import a Modrinth or CurseForge modpack">Import</button>
           <button class="ghost-btn accent" id="newModpack">+ New modpack</button>
         </div>
       </div>
-      <div class="drop-zone" data-drop="modpacks"><div>Drop .mrpack files to import</div></div>
+      <div class="drop-zone" data-drop="modpacks"><div>Drop .mrpack or CurseForge .zip to import</div></div>
       <div class="mods-installed" id="modpacksMine">
         <div class="pack-grid" id="modpackGrid"></div>
       </div>
@@ -316,6 +324,24 @@
         </label>
         <div class="setting">
           <div>
+            <h3>CurseForge API key</h3>
+            <p id="cfKeyText">Lets CurseForge modpacks download their mods automatically. CurseForge hands out keys on their
+              <button class="link-btn" data-link="https://console.curseforge.com/">developer console</button>.</p>
+          </div>
+          <form class="pmc-form" id="cfKeyForm">
+            <input id="cfKey" type="password" placeholder="Paste key" spellcheck="false" autocomplete="off">
+            <button class="ghost-btn" type="submit" id="cfKeySave">Save</button>
+          </form>
+        </div>
+        <div class="setting">
+          <div>
+            <h3>Updates</h3>
+            <p id="updateSetting">tatnat launcher updates itself from GitHub.</p>
+          </div>
+          <button class="ghost-btn" id="checkUpdates">Check now</button>
+        </div>
+        <div class="setting">
+          <div>
             <h3>Game folder</h3>
             <p>Worlds, screenshots, downloads and Java live here, separate from the official launcher.</p>
           </div>
@@ -371,6 +397,32 @@
         <button type="submit" class="install-btn" id="newPackCreate">Create</button>
       </div>
     </form>
+  </div>
+
+  <div class="modal" id="importModal" hidden>
+    <div class="modal-card">
+      <h3>Import a modpack</h3>
+      <p class="modal-text">From a file you exported - Modrinth <b>.mrpack</b> or CurseForge <b>.zip</b> - or from a link.</p>
+      <button class="install-btn wide-btn" id="importFileBtn">Choose a file…</button>
+      <div class="or"><span>or paste a link</span></div>
+      <form class="pmc-form" id="importLinkForm">
+        <input id="importLink" placeholder="Paste a Modrinth or CurseForge modpack link" spellcheck="false" autocomplete="off">
+        <button class="install-btn" type="submit" id="importLinkBtn">Import</button>
+      </form>
+      <p class="modal-status" id="importStatus" hidden></p>
+      <p class="modal-text small">Only Fabric modpacks run in tatnat launcher. CurseForge mods download automatically with a CurseForge API key (Settings); otherwise you get a list to download by hand.</p>
+      <div class="modal-actions"><button type="button" class="ghost-btn" id="importClose">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal" id="manualModal" hidden>
+    <div class="modal-card wide">
+      <h3>Some mods need a manual download</h3>
+      <p class="modal-text" id="manualIntro"></p>
+      <div class="manual-list" id="manualList"></div>
+      <p class="modal-text small">Download each one, then drag the .jar files onto the launcher while this modpack is selected.</p>
+      <div class="modal-actions"><button type="button" class="install-btn" id="manualClose">Got it</button></div>
+    </div>
   </div>
 
   <!-- First-run sign-in screen -->

@@ -14,6 +14,8 @@ Get the latest version from the **[Releases page](../../releases/latest)**:
 - **tatnat-launcher-Setup-x.y.z.exe** — installer (adds desktop + Start menu shortcuts)
 - **tatnat-launcher-Portable-x.y.z.exe** — single file, no install needed
 
+**The installer keeps itself up to date** — new versions download in the background and install when you restart. (The portable exe tells you when there's a new version.)
+
 Windows only (64-bit). The exe isn't code-signed, so Windows may show
 "Windows protected your PC" the first time — click **More info → Run anyway**.
 
@@ -23,9 +25,9 @@ Windows only (64-bit). The exe isn't code-signed, so Windows may show
 - **Every version** — releases, snapshots, beta, alpha and classic
 - **No Java needed** — the right Java version is downloaded from Mojang automatically
 - **⚡ FPS Boost** — one click for Sodium, Lithium, FerriteCore and more, plus tuned Java and video settings; add your own mods to the boost pack
-- **Modpacks** — make your own, install them from Modrinth, and import/export `.mrpack` files to share
+- **Modpacks** — make your own, install them from Modrinth, import Modrinth (`.mrpack`) and CurseForge (`.zip`) modpacks or links, and export `.mrpack` files to share
 - **Mods** — search Modrinth and install Fabric mods in one click (dependencies included), or drop in your own `.jar` files
-- **Texture packs** — install from Modrinth or add your own `.zip`, switch them on and off
+- **Texture packs** — install from Modrinth or PacksMC, or add your own `.zip`, and switch them on and off
 - **Discord status** — shows what you're playing in Discord
 - Separate game folder, so it never touches the official launcher's `.minecraft`
 

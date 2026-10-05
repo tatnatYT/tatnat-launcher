@@ -8,9 +8,12 @@ const { installFabric, loaderVersionOf } = require('./core/fabric');
 const modrinth = require('./core/modrinth');
 const texturePacks = require('./core/packs');
 const packsmc = require('./core/packsmc');
+const curseforge = require('./core/curseforge');
+const { watchForZip } = require('./core/downloadwatch');
 const modpacks = require('./core/modpacks');
 const { DiscordPresence } = require('./core/discord');
 const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
+const { createUpdater } = require('./updater');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
 const ROOT = path.join(app.getPath('appData'), '.tatnatclient');
@@ -150,6 +153,15 @@ function createWindow() {
 
 // ---------- IPC ----------
 ipcMain.handle('app:version', () => app.getVersion());
+
+// ---------- self-update from GitHub Releases ----------
+const updater = createUpdater({ logDir: path.join(ROOT, 'logs'), send: (ch, payload) => send(ch, payload) });
+ipcMain.handle('update:status', () => updater.getState());
+ipcMain.handle('update:check', () => updater.check());
+ipcMain.handle('update:install', () => {
+  if (game) throw new Error('Close Minecraft first - the update restarts the launcher.');
+  updater.installNow();
+});
 ipcMain.handle('settings:get', () => readSettings());
 ipcMain.handle('settings:set', (_e, settings) => {
   writeSettings({ ...readSettings(), ...settings });
@@ -192,7 +204,7 @@ ipcMain.handle('versions:list', async () => {
 });
 
 // Only ever open known sites in the user's browser.
-const EXTERNAL_HOSTS = ['www.youtube.com', 'www.minecraft.net', 'fabricmc.net', 'modrinth.com', 'www.electronjs.org', 'discord.com', 'www.packsmc.com', 'packsmc.com'];
+const EXTERNAL_HOSTS = ['www.youtube.com', 'www.minecraft.net', 'fabricmc.net', 'modrinth.com', 'www.electronjs.org', 'discord.com', 'www.packsmc.com', 'packsmc.com', 'github.com', 'www.curseforge.com', 'curseforge.com', 'console.curseforge.com'];
 ipcMain.handle('open:external', (_e, url) => {
   const u = new URL(url);
   if (u.protocol === 'https:' && EXTERNAL_HOSTS.includes(u.hostname)) return shell.openExternal(url);
@@ -258,24 +270,43 @@ ipcMain.handle('packs:add', async (_e, { target, files }) => {
 ipcMain.handle('packs:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'resourcepacks'));
 
 // ---------- PacksMC (the player's own API key, encrypted like the account tokens) ----------
-const PACKSMC_KEY_FILE = path.join(ROOT, 'packsmc_key');
+// API keys the player pastes in (PacksMC, CurseForge), encrypted like the account tokens.
+const secretFile = name => path.join(ROOT, `${name}_key`);
 
-function readPacksMcKey() {
+function readSecret(name) {
   try {
-    const raw = JSON.parse(fs.readFileSync(PACKSMC_KEY_FILE, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(secretFile(name), 'utf8'));
     return raw.encrypted ? safeStorage.decryptString(Buffer.from(raw.data, 'base64')) : raw.data;
   } catch {
     return '';
   }
 }
 
-function writePacksMcKey(key) {
-  if (!key) { fs.rmSync(PACKSMC_KEY_FILE, { force: true }); return; }
+function writeSecret(name, value) {
+  if (!value) { fs.rmSync(secretFile(name), { force: true }); return; }
   const encrypted = safeStorage.isEncryptionAvailable();
-  const data = encrypted ? safeStorage.encryptString(key).toString('base64') : key;
+  const data = encrypted ? safeStorage.encryptString(value).toString('base64') : value;
   fs.mkdirSync(ROOT, { recursive: true });
-  fs.writeFileSync(PACKSMC_KEY_FILE, JSON.stringify({ encrypted, data }));
+  fs.writeFileSync(secretFile(name), JSON.stringify({ encrypted, data }));
 }
+const readPacksMcKey = () => readSecret('packsmc');
+const writePacksMcKey = key => writeSecret('packsmc', key);
+
+ipcMain.handle('curseforge:hasKey', () => !!readSecret('curseforge'));
+ipcMain.handle('curseforge:setKey', async (_e, key) => {
+  key = String(key || '').trim();
+  if (!key) { writeSecret('curseforge', ''); return false; }
+  await curseforge.checkKey(key); // only store keys CurseForge accepts
+  writeSecret('curseforge', key);
+  return true;
+});
+
+// Dropped .zip files are either texture packs or CurseForge modpack exports.
+ipcMain.handle('files:classifyZips', (_e, files) => {
+  const out = { modpacks: [], packs: [] };
+  for (const f of files) (curseforge.readManifest(f) ? out.modpacks : out.packs).push(f);
+  return out;
+});
 
 ipcMain.handle('packsmc:hasKey', () => !!readPacksMcKey());
 ipcMain.handle('packsmc:setKey', async (_e, key) => {
@@ -286,15 +317,41 @@ ipcMain.handle('packsmc:setKey', async (_e, key) => {
   return who;
 });
 ipcMain.handle('packsmc:search', (_e, { query, cursor }) => packsmc.search({ key: readPacksMcKey(), query, cursor }));
-ipcMain.handle('packsmc:install', async (_e, { target, id }) => {
-  try {
-    const { filename, data, pack } = await packsmc.download({ key: readPacksMcKey(), id });
-    return await texturePacks.saveDownloaded({ dir: (await resolveTarget(target)).gameDir, id: `pmc:${id}`, filename, data, meta: pack });
-  } catch (err) {
-    if (err.webUrl) { shell.openExternal(err.webUrl); throw new Error(`${err.message} Opened it in your browser.`); }
-    throw err;
-  }
+// PacksMC downloads must happen on their site. "Get" opens the pack page; the launcher then
+// watches the Downloads folder and adds the zip once it arrives (matched by PacksMC's file size).
+const pmcWatches = new Map(); // pack id -> stop()
+const WATCH_FOR_MS = 15 * 60 * 1000;
+
+function watchForPack({ id, pack, dir }) {
+  pmcWatches.get(id)?.();
+  const stop = watchForZip({
+    folder: app.getPath('downloads'),
+    sizeBytes: pack.sizeBytes,
+    timeoutMs: WATCH_FOR_MS,
+    onFound: async full => {
+      pmcWatches.delete(id);
+      try {
+        const data = fs.readFileSync(full);
+        if (data.subarray(0, 2).toString() !== 'PK') throw new Error(`${path.basename(full)} isn't a zip file.`);
+        const title = await texturePacks.saveDownloaded({ dir, id: `pmc:${id}`, filename: path.basename(full), data, meta: pack });
+        send('packsmc:added', { id, title, file: path.basename(full) });
+      } catch (err) {
+        send('packsmc:added', { id, error: err.message });
+      }
+    },
+    onTimeout: () => { pmcWatches.delete(id); send('packsmc:added', { id, timedOut: true, title: pack.title }); },
+  });
+  pmcWatches.set(id, stop);
+}
+
+ipcMain.handle('packsmc:get', async (_e, { target, id }) => {
+  const pack = await packsmc.packInfo({ key: readPacksMcKey(), id });
+  const dir = (await resolveTarget(target)).gameDir;
+  watchForPack({ id, pack, dir });
+  await shell.openExternal(pack.pageUrl);
+  return { title: pack.title };
 });
+ipcMain.handle('packsmc:cancel', (_e, { id }) => { pmcWatches.get(id)?.(); });
 
 // ---------- the player's FPS Boost pack ----------
 function boostPrefs() {
@@ -351,13 +408,17 @@ ipcMain.handle('modpacks:openFolder', (_e, { id }) => shell.openPath(modpacks.pa
 ipcMain.handle('modpacks:installModrinth', (_e, { projectId }) =>
   modpacks.installFromModrinth(ROOT, projectId, { onStatus: s => send('modpacks:status', s) }));
 ipcMain.handle('modpacks:import', async (_e, { files } = {}) => {
-  const list = files?.length ? files : await pickFiles('Import modpack', 'Modrinth modpacks', ['mrpack']);
+  const list = files?.length ? files : await pickFiles('Import modpack', 'Modrinth (.mrpack) or CurseForge (.zip) modpacks', ['mrpack', 'zip']);
+  const onStatus = s => send('modpacks:status', s);
   const imported = [];
-  for (const f of list.filter(p => /\.mrpack$/i.test(p))) {
-    imported.push(await modpacks.importMrpack(ROOT, f, { onStatus: s => send('modpacks:status', s) }));
+  for (const f of list) {
+    if (/\.mrpack$/i.test(f)) imported.push(await modpacks.importMrpack(ROOT, f, { onStatus }));
+    else if (/\.zip$/i.test(f)) imported.push(await modpacks.importCurseForge(ROOT, f, { key: readSecret('curseforge'), onStatus }));
   }
   return imported;
 });
+ipcMain.handle('modpacks:importLink', (_e, { url }) =>
+  modpacks.importLink(ROOT, url, { curseforgeKey: readSecret('curseforge'), onStatus: s => send('modpacks:status', s) }));
 ipcMain.handle('modpacks:export', async (_e, { id }) => {
   const meta = await modpacks.readMeta(ROOT, id);
   const res = await dialog.showSaveDialog(win, {
@@ -529,6 +590,7 @@ ipcMain.handle('presence:view', (_e, view) => {
 
 app.whenReady().then(() => {
   createWindow();
+  updater.start();
   applyDiscordSettings();
 });
 app.on('before-quit', () => presence.stop());

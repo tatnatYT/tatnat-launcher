@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('launcher', {
   appVersion: () => ipcRenderer.invoke('app:version'),
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdate: cb => ipcRenderer.on('update:status', (_e, s) => cb(s)),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: s => ipcRenderer.invoke('settings:set', s),
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
@@ -40,7 +44,9 @@ contextBridge.exposeInMainWorld('launcher', {
   packsmcHasKey: () => ipcRenderer.invoke('packsmc:hasKey'),
   packsmcSetKey: key => ipcRenderer.invoke('packsmc:setKey', key),
   packsmcSearch: q => ipcRenderer.invoke('packsmc:search', q),
-  packsmcInstall: q => ipcRenderer.invoke('packsmc:install', q),
+  packsmcGet: q => ipcRenderer.invoke('packsmc:get', q),
+  packsmcCancel: q => ipcRenderer.invoke('packsmc:cancel', q),
+  onPacksmcAdded: cb => ipcRenderer.on('packsmc:added', (_e, r) => cb(r)),
 
   listModpacks: () => ipcRenderer.invoke('modpacks:list'),
   searchModpacks: q => ipcRenderer.invoke('modpacks:search', q),
@@ -51,6 +57,10 @@ contextBridge.exposeInMainWorld('launcher', {
   installModpack: q => ipcRenderer.invoke('modpacks:installModrinth', q),
   importModpacks: q => ipcRenderer.invoke('modpacks:import', q),
   exportModpack: q => ipcRenderer.invoke('modpacks:export', q),
+  importModpackLink: q => ipcRenderer.invoke('modpacks:importLink', q),
+  classifyZips: files => ipcRenderer.invoke('files:classifyZips', files),
+  curseforgeHasKey: () => ipcRenderer.invoke('curseforge:hasKey'),
+  curseforgeSetKey: key => ipcRenderer.invoke('curseforge:setKey', key),
   onModpackStatus: cb => ipcRenderer.on('modpacks:status', (_e, s) => cb(s)),
 
   getBoost: () => ipcRenderer.invoke('boost:get'),
