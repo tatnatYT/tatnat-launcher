@@ -116,6 +116,8 @@
 
   let lastT = performance.now();
   function frame(now) {
+    // While Minecraft runs, the launcher sits idle so every frame goes to the game.
+    if (document.body.dataset.game === 'running') { lastT = now; setTimeout(() => requestAnimationFrame(frame), 1000); return; }
     const dt = Math.min(0.1, (now - lastT) / 1000);
     lastT = now;
     if (terrain && canvas.offsetParent !== null) {

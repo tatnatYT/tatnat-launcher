@@ -1,13 +1,37 @@
-// Builds the Java command line and starts the game.
+﻿// Builds the Java command line and starts the game.
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { getManifest, resolveVersion, rulesAllow } = require('./versions');
 const { installVersion } = require('./install');
 
 const LAUNCHER_NAME = 'TTTClient';
-const LAUNCHER_VERSION = '0.1.0';
+const LAUNCHER_VERSION = '0.2.0';
+
+// Tuned for a smooth client: short G1 pauses, a young generation sized for Minecraft's
+// short-lived allocations, no System.gc() stalls. IgnoreUnrecognizedVMOptions keeps the
+// same list safe on every Java Mojang ships (8 for old versions up to 25 for new ones).
+const PERFORMANCE_JVM_ARGS = [
+  '-XX:+IgnoreUnrecognizedVMOptions',
+  '-XX:+UnlockExperimentalVMOptions',
+  '-XX:+UseG1GC',
+  '-XX:MaxGCPauseMillis=37',
+  '-XX:+ParallelRefProcEnabled',
+  '-XX:+DisableExplicitGC',
+  '-XX:G1NewSizePercent=23',
+  '-XX:G1MaxNewSizePercent=40',
+  '-XX:G1ReservePercent=20',
+  '-XX:G1HeapRegionSize=16M',
+  '-XX:G1MixedGCCountTarget=3',
+  '-XX:InitiatingHeapOccupancyPercent=20',
+  '-XX:G1MixedGCLiveThresholdPercent=90',
+  '-XX:SurvivorRatio=32',
+  '-XX:MaxTenuringThreshold=1',
+  '-XX:+PerfDisableSharedMem',
+  '-XX:+UseStringDeduplication',
+];
 
 // Same UUID the vanilla server assigns offline players: UUID.nameUUIDFromBytes("OfflinePlayer:<name>").
 function offlineUuid(name) {
@@ -70,7 +94,8 @@ async function launch({ root, gameDir = root, versionId, account, memoryMb = 409
 
   const args = [
     `-Xmx${memoryMb}M`,
-    `-Xms${Math.min(memoryMb, 1024)}M`,
+    `-Xms${Math.max(1024, Math.floor(memoryMb / 2))}M`, // less heap resizing mid-game
+    ...PERFORMANCE_JVM_ARGS,
     ...expandArgs(jvmTemplate, vars, features),
     ...(inst.loggingArg ? [inst.loggingArg] : []),
     version.mainClass,
@@ -84,6 +109,8 @@ async function launch({ root, gameDir = root, versionId, account, memoryMb = 409
   const child = spawn(inst.javaBin, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false });
   child.stdout.setEncoding('utf8').on('data', onLog);
   child.stderr.setEncoding('utf8').on('data', onLog);
+  // A notch above normal so background apps don't steal frames from the game.
+  try { os.setPriority(child.pid, os.constants.priority.PRIORITY_ABOVE_NORMAL); } catch { /* not allowed - fine */ }
   return child;
 }
 

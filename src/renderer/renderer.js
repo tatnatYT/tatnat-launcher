@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const api = window.launcher;
 
+const LOADER_SUFFIX = { fabric: ' · Fabric', boost: ' · FPS Boost' };
 const TYPE_LABEL = { release: 'Release', snapshot: 'Snapshot', old_beta: 'Beta', old_alpha: 'Alpha', custom: 'Installed' };
 
 let settings = {};
@@ -45,7 +46,7 @@ document.addEventListener('keydown', e => {
 let progressStage = '';
 function updateStatus() {
   const card = $('statusCard');
-  const label = `Minecraft ${$('version').value || '…'}${settings.loader === 'fabric' ? ' · Fabric' : ''}`;
+  const label = `Minecraft ${$('version').value || '…'}${LOADER_SUFFIX[settings.loader] || ''}`;
   card.classList.remove('ready', 'busy', 'running');
   if (state === 'installing') {
     card.classList.add('busy');
@@ -230,7 +231,7 @@ function updateHero() {
   const label = id === versionData.latest.release ? 'Latest release'
     : id === versionData.latest.snapshot ? 'Latest snapshot'
     : TYPE_LABEL[v.type] || v.type;
-  $('heroSub').textContent = `${label} · Java Edition${settings.loader === 'fabric' ? ' · Fabric' : ''}`;
+  $('heroSub').textContent = `${label} · Java Edition${LOADER_SUFFIX[settings.loader] || ''}`;
 }
 
 $('version').addEventListener('change', () => {
@@ -274,6 +275,7 @@ $('play').addEventListener('click', async () => {
 
 api.onState(s => {
   state = s;
+  document.body.dataset.game = s;
   $('progressWrap').hidden = s !== 'installing';
   if (s !== 'installing') progressStage = '';
   updatePlayButton();
@@ -353,7 +355,7 @@ $('openFolder').addEventListener('click', () => api.openFolder());
 // ---------- loader ----------
 function renderLoader() {
   document.querySelectorAll('#loader button').forEach(b => b.classList.toggle('on', b.dataset.loader === settings.loader));
-  $('fabricBanner').hidden = settings.loader === 'fabric';
+  $('fabricBanner').hidden = settings.loader !== 'vanilla';
   updateHero();
 }
 

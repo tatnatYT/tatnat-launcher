@@ -7,6 +7,7 @@ const auth = require('./core/auth');
 const { installFabric } = require('./core/fabric');
 const modrinth = require('./core/modrinth');
 const { DiscordPresence } = require('./core/discord');
+const { installBoostPack, writeBoostOptions } = require('./core/boost');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
 const ROOT = path.join(app.getPath('appData'), '.tatnatclient');
@@ -235,9 +236,32 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', memoryMb
     }
     let versionId = version;
     let gameDir = ROOT;
-    if (loader === 'fabric') {
-      send('game:progress', { stage: 'Installing Fabric', done: 0, total: 1 });
-      versionId = await installFabric(ROOT, version);
+    let useFabric = loader === 'fabric' || loader === 'boost';
+    if (loader === 'boost') {
+      try {
+        send('game:progress', { stage: 'Installing Fabric', done: 0, total: 1 });
+        versionId = await installFabric(ROOT, version);
+        gameDir = instanceDir(version);
+        send('game:progress', { stage: 'Installing FPS Boost mods', done: 0, total: 1 });
+        const res = await installBoostPack({ dir: gameDir, mcVersion: version, onStatus: s => send('game:log', `[TTT Client] ${s}\n`) });
+        if (res.added.length) send('game:log', `[TTT Client] FPS Boost added: ${res.added.join(', ')}\n`);
+        if (res.unavailable.length) send('game:log', `[TTT Client] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
+        if (await writeBoostOptions(gameDir)) send('game:log', '[TTT Client] Applied FPS-friendly video settings\n');
+      } catch (err) {
+        if (!/support/i.test(err.message)) throw err;
+        // Fabric doesn't exist for very old versions: still launch, with the JVM tuning only.
+        send('game:log', `[TTT Client] ${err.message} Launching vanilla with the optimised Java settings.\n`);
+        useFabric = false;
+        playing.loader = 'vanilla';
+        versionId = version;
+        gameDir = ROOT;
+      }
+    }
+    if (useFabric) {
+      if (loader === 'fabric') {
+        send('game:progress', { stage: 'Installing Fabric', done: 0, total: 1 });
+        versionId = await installFabric(ROOT, version);
+      }
       gameDir = instanceDir(version);
       const modsFolder = path.join(gameDir, 'mods');
       playing.modCount = fs.existsSync(modsFolder) ? fs.readdirSync(modsFolder).filter(f => f.endsWith('.jar')).length : 0;
@@ -293,8 +317,9 @@ function buildActivity() {
   };
   if (gameState === 'running' && playing) {
     activity.details = `Playing Minecraft ${playing.version}`;
-    activity.state = playing.loader === 'fabric'
-      ? `Fabric · ${playing.modCount} mod${playing.modCount === 1 ? '' : 's'}`
+    const mods = `${playing.modCount} mod${playing.modCount === 1 ? '' : 's'}`;
+    activity.state = playing.loader === 'boost' ? `FPS Boost · ${mods}`
+      : playing.loader === 'fabric' ? `Fabric · ${mods}`
       : 'Vanilla';
     activity.timestamps = { start: playing.start };
     activity.assets.small_image = `https://mc-heads.net/avatar/${playing.uuid || encodeURIComponent(playing.name)}/64`;

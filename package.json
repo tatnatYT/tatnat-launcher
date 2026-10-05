@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "tatnat-client",
   "productName": "TTT Client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TTT Client - a custom Minecraft launcher",
   "author": "tatnat",
   "main": "src/main.js",

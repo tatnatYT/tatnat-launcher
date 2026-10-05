@@ -390,7 +390,7 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
 .segmented button.on { color: #fff; background: var(--accent-dark); box-shadow: inset 0 -2px 0 rgba(0,0,0,.25); }
 .segmented.small { height: 36px; }
 .segmented.small button { font-size: 12px; padding: 0 12px; }
-#loader { width: 180px; }
+#loader { width: auto; }
 
 /* ---------- Mods ---------- */
 .panel-head .sub { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
@@ -490,3 +490,19 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
 .discord-setting.off .discord-id, .discord-setting.off .discord-help { opacity: .45; }
 .discord-status.bad-id { color: #ff8a80; }
 .discord-status.bad-id::before { background: var(--danger); }
+
+/* ---------- FPS Boost loader option ---------- */
+.segmented button.boost { display: inline-flex; align-items: center; gap: 6px; }
+.segmented button.boost svg { width: 14px; height: 14px; fill: #e0b341; }
+.segmented button.boost.on {
+  background: linear-gradient(135deg, #f0b429, #e07b1f);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25), 0 0 14px rgba(240,180,41,.35);
+}
+.segmented button.boost.on svg { fill: #fff; }
+.field.loader-field { width: auto; flex: none; }
+#loader button { padding: 0 12px; }
+.dock .play-btn { min-width: 150px; padding: 0 22px; }
+.chips button { padding: 3px 8px; }
+.dock .field-head { flex-wrap: nowrap; }
+/* the type chips double as the Version heading - frees room for all four on one line */
+.dock .field.grow .field-head > span { display: none; }

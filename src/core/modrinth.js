@@ -83,7 +83,7 @@ async function install({ dir, projectId, mcVersion, onStatus = () => {} }) {
     }
     await downloadFile(file.url, path.join(modsDir(dir), file.filename), { sha1: file.hashes.sha1, size: file.size });
     index[id] = {
-      title: project.title, icon: project.icon_url || null, versionId: version.id,
+      title: project.title, slug: project.slug, icon: project.icon_url || null, versionId: version.id,
       versionNumber: version.version_number, filename: file.filename, dependency: isDependency && !old,
     };
     installed.push(project.title);
@@ -105,6 +105,13 @@ async function install({ dir, projectId, mcVersion, onStatus = () => {} }) {
   return installed;
 }
 
+// Returns { id, slug } when the project has a Fabric build for this version, else null.
+async function projectFor(slugOrId, mcVersion) {
+  const params = new URLSearchParams({ loaders: JSON.stringify(['fabric']), game_versions: JSON.stringify([mcVersion]) });
+  const [project, versions] = await Promise.all([api(`/project/${slugOrId}`), api(`/project/${slugOrId}/version?${params}`)]);
+  return versions.length ? { id: project.id, slug: project.slug } : null;
+}
+
 async function remove({ dir, projectId }) {
   const index = await readIndex(dir);
   const mod = index[projectId];
@@ -124,4 +131,4 @@ async function setEnabled({ dir, projectId, enabled }) {
   if (fs.existsSync(from)) await fsp.rename(from, to);
 }
 
-module.exports = { search, listInstalled, install, remove, setEnabled };
+module.exports = { search, listInstalled, install, remove, setEnabled, projectFor };

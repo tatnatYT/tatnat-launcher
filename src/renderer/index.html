@@ -97,13 +97,14 @@
               <button data-type="old_alpha" title="Alpha &amp; Classic">Alpha</button>
             </div>
           </div>
-          <select id="version"></select>
+          <select id="version" aria-label="Version"></select>
         </div>
-        <div class="field">
+        <div class="field loader-field">
           <div class="field-head"><span>Loader</span></div>
           <div class="segmented" id="loader">
             <button data-loader="vanilla">Vanilla</button>
             <button data-loader="fabric">Fabric</button>
+            <button data-loader="boost" class="boost" title="Fabric + a performance mod pack, tuned settings and Java flags"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>FPS Boost</button>
           </div>
         </div>
         <button class="play-btn" id="play">PLAY</button>
@@ -130,7 +131,7 @@
         </div>
       </div>
       <div class="mods-banner" id="fabricBanner" hidden>
-        <span>Mods need the Fabric loader. Play is set to <b>Vanilla</b>.</span>
+        <span>Mods need Fabric or FPS Boost. Play is set to <b>Vanilla</b>.</span>
         <button class="ghost-btn" id="useFabric">Use Fabric</button>
       </div>
       <div class="mods-browse" id="modsBrowse">

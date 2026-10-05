@@ -10,6 +10,8 @@ async function installFabric(root, mcVersion) {
   try {
     loaders = await fetchJson(`${META}/versions/loader/${encodeURIComponent(mcVersion)}`);
   } catch (err) {
+    // Fabric's API answers 400 for game versions it has never heard of (e.g. 1.8.9).
+    if (/HTTP 400/.test(err.message)) throw new Error(`Fabric doesn't support Minecraft ${mcVersion}.`);
     // Offline: reuse a Fabric profile we installed before.
     const dirs = await fsp.readdir(path.join(root, 'versions')).catch(() => []);
     const local = dirs.filter(d => d.startsWith('fabric-loader-') && d.endsWith(`-${mcVersion}`)).sort().pop();
