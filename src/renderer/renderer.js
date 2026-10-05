@@ -621,25 +621,36 @@ $('openModsFolder').addEventListener('click', () => api.openModsFolder({ target:
 api.onModStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
 
 // ---------- texture packs ----------
-const packs = { query: '', offset: 0, total: 0, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null };
+const packs = { source: 'modrinth', query: '', offset: 0, total: 0, cursor: null, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null, pmcKey: false };
 
 function renderPackResults() {
   const list = $('packResults');
   list.replaceChildren();
   if (!packs.results.length) {
-    list.append(listMessage(packs.loading ? 'Searching…' : `No texture packs found for Minecraft ${mcVersion()}.`));
+    list.append(listMessage(packs.loading ? 'Searching…' : packs.source === 'packsmc' ? 'No PacksMC packs found.' : `No texture packs found for Minecraft ${mcVersion()}.`));
     return;
   }
   const have = new Set(packs.installed.map(p => p.id).filter(Boolean));
+  const pmc = packs.source === 'packsmc';
   for (const p of packs.results) {
     const card = document.createElement('div');
     card.className = 'mod-card';
-    const state = packs.busy.has(p.id) ? 'busy' : have.has(p.id) ? 'done' : 'idle';
-    card.append(modIcon(p.icon), modBody(p.title, p.slug, `by ${p.author}`, p.description, `${fmt(p.downloads)} downloads`, 'resourcepack'),
-      actionButton(state, () => installPack(p.id)));
+    const key = pmc ? `pmc:${p.id}` : p.id;
+    const state = packs.busy.has(key) ? 'busy' : have.has(key) ? 'done' : 'idle';
+    const stats = [p.resolution, p.versions?.length ? (p.versions.length > 1 ? `${p.versions[p.versions.length - 1]}–${p.versions[0]}` : p.versions[0]) : '',
+      `${fmt(p.downloads)} downloads`].filter(Boolean).join(' · ');
+    const body = modBody(p.title, pmc ? null : p.slug, p.author ? `by ${p.author}` : '', p.description, stats, 'resourcepack');
+    if (pmc && p.webUrl) {
+      const link = body.querySelector('.mod-title button');
+      link.disabled = false;
+      link.title = 'Open on PacksMC';
+      link.addEventListener('click', () => api.openExternal(p.webUrl));
+    }
+    card.append(modIcon(p.icon), body, actionButton(state, () => (pmc ? installPacksMc(p) : installPack(p.id))));
     list.append(card);
   }
-  if (packs.results.length < packs.total) list.append(loadMoreButton(() => searchPacks(true)));
+  const more = pmc ? !!packs.cursor : packs.results.length < packs.total;
+  if (more) list.append(loadMoreButton(() => searchPacks(true)));
 }
 
 function renderInstalledPacks() {
@@ -668,7 +679,7 @@ function renderInstalledPacks() {
       await api.removePack({ target: target(), name: p.name });
       await loadInstalledPacks();
     });
-    const meta = [p.versionNumber, p.local ? 'added by you' : ''].filter(Boolean).join(' · ');
+    const meta = [p.versionNumber, p.local ? 'added by you' : p.id?.startsWith('pmc:') ? 'from PacksMC' : 'from Modrinth'].filter(Boolean).join(' · ');
     card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), toggle, remove);
     list.append(card);
   }
@@ -685,13 +696,21 @@ async function searchPacks(append = false) {
   const seq = ++packSeq;
   if (!append) { packs.offset = 0; packs.results = []; packs.loading = true; renderPackResults(); }
   try {
+    if (packs.source === 'packsmc') {
+      if (!packs.pmcKey) { packs.loading = false; return; }
+      const res = await api.packsmcSearch({ query: packs.query, cursor: append ? packs.cursor : null });
+      if (seq !== packSeq) return;
+      packs.cursor = res.nextCursor;
+      packs.results = append ? [...packs.results, ...res.hits] : res.hits;
+      return;
+    }
     const res = await api.searchPacks({ query: packs.query, mcVersion: mcVersion(), offset: packs.offset });
     if (seq !== packSeq) return;
     packs.total = res.total;
     packs.results = append ? [...packs.results, ...res.hits] : res.hits;
     packs.offset = packs.results.length;
   } catch (err) {
-    if (seq === packSeq) toast(`Modrinth: ${cleanError(err)}`);
+    if (seq === packSeq) toast(`${packs.source === 'packsmc' ? 'PacksMC' : 'Modrinth'}: ${cleanError(err)}`);
   } finally {
     if (seq === packSeq) { packs.loading = false; renderPackResults(); }
   }
@@ -710,6 +729,57 @@ async function installPack(id) {
     await loadInstalledPacks();
   }
 }
+
+async function installPacksMc(p) {
+  const key = `pmc:${p.id}`;
+  packs.busy.add(key);
+  renderPackResults();
+  try {
+    const title = await api.packsmcInstall({ target: target(), id: p.id });
+    toast(`${title} installed from PacksMC and switched on.`);
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    packs.busy.delete(key);
+    await loadInstalledPacks();
+  }
+}
+
+async function setPackSource(source) {
+  packs.source = source;
+  document.querySelectorAll('#packSource button').forEach(b => b.classList.toggle('on', b.dataset.source === source));
+  $('packSearch').placeholder = source === 'packsmc' ? 'Search PacksMC texture packs…' : 'Search Modrinth texture packs…';
+  if (source === 'packsmc') packs.pmcKey = await api.packsmcHasKey();
+  const needsKey = source === 'packsmc' && !packs.pmcKey;
+  $('pmcSetup').hidden = !needsKey;
+  $('packsBrowse').classList.toggle('needs-key', needsKey);
+  $('pmcChangeKey').hidden = !(source === 'packsmc' && packs.pmcKey);
+  packs.results = [];
+  searchPacks();
+}
+document.querySelectorAll('#packSource button').forEach(b => b.addEventListener('click', () => setPackSource(b.dataset.source)));
+$('pmcChangeKey').addEventListener('click', () => {
+  packs.pmcKey = false;
+  $('pmcSetup').hidden = false;
+  $('packsBrowse').classList.add('needs-key');
+  $('pmcKey').focus();
+});
+$('pmcForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('pmcSave').disabled = true;
+  $('pmcSave').textContent = 'Checking…';
+  try {
+    const who = await api.packsmcSetKey($('pmcKey').value);
+    $('pmcKey').value = '';
+    toast(who ? `Connected to PacksMC${who.username ? ` as ${who.username}` : ''}.` : 'PacksMC key removed.');
+    await setPackSource('packsmc');
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    $('pmcSave').disabled = false;
+    $('pmcSave').textContent = 'Connect';
+  }
+});
 
 async function addPackFiles(files) {
   try {
@@ -1074,4 +1144,5 @@ setInterval(() => { if ($('tab-settings').classList.contains('active')) renderDi
   await loadVersions();
   await loadModpacks();
   targetChanged();
+  window.hideSplash?.();
 })();

@@ -109,6 +109,22 @@ async function install({ dir, projectId, mcVersion }) {
   return project.title;
 }
 
+// Stores a pack downloaded from another source (PacksMC), tracked under `id` and switched on.
+async function saveDownloaded({ dir, id, filename, data, meta }) {
+  const index = await readIndex(dir);
+  const old = index[id];
+  if (old && old.filename !== filename) {
+    await fsp.rm(path.join(packsDir(dir), old.filename), { recursive: true, force: true });
+    await setPackEnabled(dir, old.filename, false);
+  }
+  await fsp.mkdir(packsDir(dir), { recursive: true });
+  await fsp.writeFile(path.join(packsDir(dir), filename), data);
+  index[id] = { title: meta.title, icon: meta.icon || null, filename, versionNumber: meta.resolution || '', source: 'packsmc' };
+  await writeIndex(dir, index);
+  await setPackEnabled(dir, filename, true);
+  return meta.title;
+}
+
 async function addLocal({ dir, files }) {
   await fsp.mkdir(packsDir(dir), { recursive: true });
   const added = [];
@@ -135,4 +151,4 @@ async function setEnabled({ dir, name, enabled }) {
   await setPackEnabled(dir, path.basename(name), enabled);
 }
 
-module.exports = { list, install, addLocal, remove, setEnabled };
+module.exports = { list, install, saveDownloaded, addLocal, remove, setEnabled };

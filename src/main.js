@@ -7,6 +7,7 @@ const auth = require('./core/auth');
 const { installFabric, loaderVersionOf } = require('./core/fabric');
 const modrinth = require('./core/modrinth');
 const texturePacks = require('./core/packs');
+const packsmc = require('./core/packsmc');
 const modpacks = require('./core/modpacks');
 const { DiscordPresence } = require('./core/discord');
 const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
@@ -191,7 +192,7 @@ ipcMain.handle('versions:list', async () => {
 });
 
 // Only ever open known sites in the user's browser.
-const EXTERNAL_HOSTS = ['www.youtube.com', 'www.minecraft.net', 'fabricmc.net', 'modrinth.com', 'www.electronjs.org', 'discord.com'];
+const EXTERNAL_HOSTS = ['www.youtube.com', 'www.minecraft.net', 'fabricmc.net', 'modrinth.com', 'www.electronjs.org', 'discord.com', 'www.packsmc.com', 'packsmc.com'];
 ipcMain.handle('open:external', (_e, url) => {
   const u = new URL(url);
   if (u.protocol === 'https:' && EXTERNAL_HOSTS.includes(u.hostname)) return shell.openExternal(url);
@@ -255,6 +256,45 @@ ipcMain.handle('packs:add', async (_e, { target, files }) => {
   return texturePacks.addLocal({ dir: (await resolveTarget(target)).gameDir, files: list });
 });
 ipcMain.handle('packs:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'resourcepacks'));
+
+// ---------- PacksMC (the player's own API key, encrypted like the account tokens) ----------
+const PACKSMC_KEY_FILE = path.join(ROOT, 'packsmc_key');
+
+function readPacksMcKey() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(PACKSMC_KEY_FILE, 'utf8'));
+    return raw.encrypted ? safeStorage.decryptString(Buffer.from(raw.data, 'base64')) : raw.data;
+  } catch {
+    return '';
+  }
+}
+
+function writePacksMcKey(key) {
+  if (!key) { fs.rmSync(PACKSMC_KEY_FILE, { force: true }); return; }
+  const encrypted = safeStorage.isEncryptionAvailable();
+  const data = encrypted ? safeStorage.encryptString(key).toString('base64') : key;
+  fs.mkdirSync(ROOT, { recursive: true });
+  fs.writeFileSync(PACKSMC_KEY_FILE, JSON.stringify({ encrypted, data }));
+}
+
+ipcMain.handle('packsmc:hasKey', () => !!readPacksMcKey());
+ipcMain.handle('packsmc:setKey', async (_e, key) => {
+  key = String(key || '').trim();
+  if (!key) { writePacksMcKey(''); return null; }
+  const who = await packsmc.checkKey(key); // only store keys PacksMC accepts
+  writePacksMcKey(key);
+  return who;
+});
+ipcMain.handle('packsmc:search', (_e, { query, cursor }) => packsmc.search({ key: readPacksMcKey(), query, cursor }));
+ipcMain.handle('packsmc:install', async (_e, { target, id }) => {
+  try {
+    const { filename, data, pack } = await packsmc.download({ key: readPacksMcKey(), id });
+    return await texturePacks.saveDownloaded({ dir: (await resolveTarget(target)).gameDir, id: `pmc:${id}`, filename, data, meta: pack });
+  } catch (err) {
+    if (err.webUrl) { shell.openExternal(err.webUrl); throw new Error(`${err.message} Opened it in your browser.`); }
+    throw err;
+  }
+});
 
 // ---------- the player's FPS Boost pack ----------
 function boostPrefs() {

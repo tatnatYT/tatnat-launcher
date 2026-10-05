@@ -1,0 +1,297 @@
+/* ==========================================================================
+   The cool layer: glass panels over a moving aurora, glow, motion, 3D heads.
+   Loaded after style.css and only overrides/extends it.
+   ========================================================================== */
+
+:root {
+  --bg: #0b0d12;
+  --panel: rgba(24, 27, 35, .72);
+  --panel-2: rgba(38, 43, 54, .72);
+  --line: rgba(255, 255, 255, .075);
+  --glow: rgba(95, 191, 58, .35);
+  --glass-blur: blur(16px) saturate(140%);
+}
+
+::selection { background: rgba(95, 191, 58, .45); color: #fff; }
+
+/* ---------- aurora backdrop (shows behind every tab except Play's scene) ---------- */
+body { background: var(--bg); }
+body::before, body::after {
+  content: ''; position: fixed; z-index: -1; pointer-events: none;
+  width: 70vmax; height: 70vmax; border-radius: 50%; filter: blur(90px); opacity: .32;
+}
+body::before {
+  left: -20vmax; top: -25vmax;
+  background: radial-gradient(circle, #3fa33a 0%, transparent 65%);
+  animation: aurora-a 26s ease-in-out infinite alternate;
+}
+body::after {
+  right: -25vmax; bottom: -30vmax;
+  background: radial-gradient(circle, #2f6bd8 0%, #7a3fd1 35%, transparent 68%);
+  animation: aurora-b 32s ease-in-out infinite alternate;
+}
+@keyframes aurora-a { to { transform: translate(18vmax, 12vmax) scale(1.15); } }
+@keyframes aurora-b { to { transform: translate(-16vmax, -10vmax) scale(1.2); } }
+main { background: transparent; }
+
+/* subtle pixel grid over the backdrop */
+main::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 80%);
+}
+.tab { z-index: 1; }
+
+/* ---------- glass everywhere ---------- */
+.sidebar {
+  background: linear-gradient(180deg, rgba(95,191,58,.08), transparent 220px), rgba(13, 15, 20, .78);
+  backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--line);
+  position: relative; z-index: 2;
+}
+.setting, .mod-card, .pack-card, .account-row, .creator, .power-card, .pmc-setup, .modal-card, .login-card, .status-card, .account-card, .boost-row {
+  backdrop-filter: var(--glass-blur);
+}
+.mod-card, .pack-card, .setting, .account-row, .power-card {
+  background: linear-gradient(160deg, rgba(255,255,255,.035), rgba(255,255,255,.01)) , var(--panel);
+}
+
+/* glowing hover */
+.mod-card, .account-row, .power-card, .setting {
+  transition: border-color .2s, box-shadow .25s, transform .2s;
+}
+.mod-card:hover, .account-row:hover, .power-card:hover {
+  border-color: rgba(95, 191, 58, .45);
+  box-shadow: 0 0 0 1px rgba(95,191,58,.18), 0 12px 32px rgba(0,0,0,.35), 0 0 28px rgba(95,191,58,.12);
+  transform: translateY(-2px);
+}
+.pack-card:hover {
+  border-color: rgba(95, 191, 58, .5);
+  box-shadow: 0 16px 40px rgba(0,0,0,.4), 0 0 32px rgba(95,191,58,.15);
+}
+
+/* staggered entrance (cool.js sets --i) */
+.enter { animation: card-in .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+@keyframes card-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* headings get a chunky Minecraft drop shadow */
+.panel-head h2 {
+  font-size: 18px;
+  text-shadow: 3px 3px 0 rgba(0,0,0,.45);
+  background: linear-gradient(180deg, #fff 30%, #c9f5a8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,.5));
+}
+
+/* ---------- sidebar polish ---------- */
+.brand .logo { transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+.brand:hover .logo { transform: rotate(-8deg) scale(1.12); }
+.brand-text {
+  background: linear-gradient(90deg, #fff, #b8f28f, #fff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+.brand-text span { -webkit-text-fill-color: var(--muted); }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.nav-indicator {
+  background: linear-gradient(90deg, rgba(95,191,58,.22), rgba(95,191,58,.05) 70%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(95,191,58,.18);
+}
+.nav-btn .nav-icon { transition: transform .2s, background .2s, box-shadow .2s; }
+.nav-btn:hover .nav-icon { transform: translateX(2px) scale(1.06); }
+.nav-btn.active .nav-icon {
+  background: linear-gradient(135deg, #7ad94b, #3f8a22);
+  box-shadow: 0 0 18px rgba(95,191,58,.55), inset 0 -2px 0 rgba(0,0,0,.25);
+}
+
+/* ---------- PLAY button: shine sweep + breathing glow ---------- */
+.play-btn {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #7ad94b, #4fae2c);
+  animation: play-breathe 2.8s ease-in-out infinite;
+}
+.play-btn::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  transform: skewX(-20deg);
+  animation: play-shine 3.6s ease-in-out infinite;
+}
+.play-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.play-btn:disabled, .play-btn.running { animation: none; }
+.play-btn:disabled::after, .play-btn.running::after { display: none; }
+.play-btn.running { background: linear-gradient(180deg, #ef6b5f, #c9443a); }
+@keyframes play-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+@keyframes play-breathe {
+  0%, 100% { box-shadow: inset 0 -5px 0 var(--accent-dark), 0 4px 0 #0c0d10, 0 0 0 rgba(95,191,58,0); }
+  50% { box-shadow: inset 0 -5px 0 var(--accent-dark), 0 4px 0 #0c0d10, 0 0 34px rgba(95,191,58,.55); }
+}
+
+/* block burst on click */
+.burst {
+  position: fixed; z-index: 50; width: 10px; height: 10px; pointer-events: none;
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,.3);
+  animation: burst .75s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes burst {
+  to { transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* ---------- play dock & hero ---------- */
+.dock {
+  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.01)), rgba(12, 14, 19, .72);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  animation: dock-in .6s cubic-bezier(.2,.8,.2,1) both .15s;
+}
+@keyframes dock-in { from { opacity: 0; transform: translateY(24px); } }
+
+.hero-text { animation: hero-in .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes hero-in { from { opacity: 0; transform: translateY(-14px); } }
+.hero-text h1 {
+  font-size: 34px;
+  color: #fff;
+  text-shadow: 4px 4px 0 #2b4d16, 0 0 30px rgba(0,0,0,.35);
+  display: inline-block;
+}
+.hero-text { position: relative; }
+
+/* the yellow pulsing Minecraft splash, hanging off the end of the title */
+.title-wrap { position: relative; display: inline-block; }
+.mc-splash {
+  position: absolute; right: -34px; bottom: -8px;
+  font-family: var(--pixel); font-size: 11px; color: #ffff55;
+  text-shadow: 2px 2px 0 #3f3f15;
+  transform-origin: center; transform: rotate(-14deg);
+  animation: mc-pulse .55s ease-in-out infinite alternate;
+  cursor: pointer; white-space: nowrap; z-index: 2;
+}
+@keyframes mc-pulse { from { transform: rotate(-14deg) scale(1); } to { transform: rotate(-14deg) scale(1.1); } }
+
+.progress-bar { height: 10px; border-radius: 3px; background: rgba(0,0,0,.4); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.progress-bar div {
+  background: repeating-linear-gradient(-45deg, #7ad94b 0 10px, #5fbf3a 10px 20px);
+  background-size: 28px 28px;
+  animation: stripes .8s linear infinite;
+  box-shadow: 0 0 14px rgba(95,191,58,.6);
+}
+@keyframes stripes { to { background-position: 28px 0; } }
+
+/* ---------- inputs & buttons ---------- */
+input, select { background: rgba(10, 12, 16, .6); transition: border-color .15s, box-shadow .15s; }
+input:focus, select:focus { box-shadow: 0 0 0 3px rgba(95,191,58,.18); }
+.install-btn { background: linear-gradient(180deg, #7ad94b, #4fae2c); transition: transform .15s, filter .15s, box-shadow .2s; }
+.install-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: inset 0 -3px 0 var(--accent-dark), 0 6px 18px rgba(95,191,58,.35); }
+.install-btn.done { background: rgba(95,191,58,.1); border-color: rgba(95,191,58,.35); }
+.ghost-btn { transition: color .15s, border-color .15s, background .15s, transform .15s; }
+.ghost-btn:hover { border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
+.ghost-btn.accent { background: linear-gradient(180deg, #5bb437, #3f8a22); box-shadow: 0 4px 14px rgba(95,191,58,.25); }
+.switch:checked { box-shadow: 0 0 12px rgba(95,191,58,.45); }
+
+/* ---------- toast ---------- */
+.toast {
+  background: rgba(16, 19, 25, .88); color: var(--text);
+  border: 1px solid rgba(95,191,58,.35); border-left: 4px solid var(--accent);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 24px rgba(95,191,58,.12);
+  animation: toast-in .35s cubic-bezier(.2,.9,.3,1.2) both;
+  z-index: 30;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(30px); } }
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(95,191,58,.45); background-clip: padding-box; border: 3px solid transparent; }
+
+/* ---------- 3D heads ---------- */
+.head3d {
+  --size: 40px;
+  width: var(--size); height: var(--size); flex: none;
+  perspective: calc(var(--size) * 6);
+  display: grid; place-items: center;
+}
+.head3d .rig {
+  position: relative; width: var(--size); height: var(--size);
+  transform-style: preserve-3d; transition: transform .2s ease-out;
+}
+.head3d .cube { position: absolute; inset: 0; transform-style: preserve-3d; }
+.head3d .cube.hat { inset: calc(var(--size) * -0.0625); }
+.head3d .face {
+  position: absolute; inset: 0;
+  background-image: var(--skin);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  backface-visibility: hidden;
+}
+/* each face is 8x8 skin pixels: scale the 64x64 skin to 8 faces wide and shift to the face */
+.head3d .cube.base .face { background-size: calc(var(--size) * 8) auto; background-position: calc(var(--fx) * var(--size) / -8) calc(var(--fy) * var(--size) / -8); }
+.head3d .cube.hat .face { background-size: calc(var(--size) * 9) auto; background-position: calc(var(--fx) * var(--size) * 1.125 / -8) calc(var(--fy) * var(--size) * 1.125 / -8); }
+.head3d .cube.base .face { --half: calc(var(--size) / 2); }
+.head3d .cube.hat .face { --half: calc(var(--size) * 1.125 / 2); }
+.head3d .front  { transform: translateZ(var(--half)); }
+.head3d .back   { transform: rotateY(180deg) translateZ(var(--half)); }
+.head3d .right  { transform: rotateY(-90deg) translateZ(var(--half)); }
+.head3d .left   { transform: rotateY(90deg) translateZ(var(--half)); }
+.head3d .top    { transform: rotateX(90deg) translateZ(var(--half)); }
+.head3d .bottom { transform: rotateX(-90deg) translateZ(var(--half)); }
+.head3d .base .face { box-shadow: inset 0 0 0 100px rgba(0,0,0,0); }
+.head3d .base .right, .head3d .base .left { filter: brightness(.8); }
+.head3d .base .top { filter: brightness(1.1); }
+.head3d .base .bottom { filter: brightness(.6); }
+
+.head3d.spin .rig { animation: head-spin 5s linear infinite; }
+.head3d.sway .rig { animation: head-sway 4s ease-in-out infinite; }
+@keyframes head-spin { from { transform: rotateX(-14deg) rotateY(0deg); } to { transform: rotateX(-14deg) rotateY(360deg); } }
+@keyframes head-sway { 0%, 100% { transform: rotateX(-10deg) rotateY(-28deg); } 50% { transform: rotateX(-10deg) rotateY(28deg); } }
+
+/* sidebar account head: the host is the old flat .head - hide its flat face */
+.head.head3d-host { background: none !important; overflow: visible; width: 32px; height: 32px; display: grid; place-items: center; }
+.head.head3d-host::after { display: none; }
+.head.head3d-host.empty .face { background: #3a3f4a; }
+.account-card:hover .head3d .rig { animation-duration: 1.2s; }
+
+/* big heads */
+.login-card .head3d, .creator .head3d { filter: drop-shadow(0 14px 18px rgba(0,0,0,.45)); }
+.creator .head3d { margin: 6px 10px; }
+
+/* ---------- splash screen ---------- */
+#splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 40%, #16301a, #07080b 70%);
+  transition: opacity .55s ease, transform .55s ease;
+}
+#splash.gone { opacity: 0; transform: scale(1.06); pointer-events: none; }
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+.splash-inner .head3d { filter: drop-shadow(0 0 40px rgba(95,191,58,.45)); }
+.splash-title {
+  font-family: var(--pixel); font-size: 30px; letter-spacing: 2px; text-align: center;
+  color: #fff; text-shadow: 4px 4px 0 #2b4d16;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: hero-in .6s cubic-bezier(.2,.8,.2,1) both .1s;
+}
+.splash-title span { font-size: 11px; letter-spacing: 8px; color: #9fe07a; text-shadow: none; }
+.splash-bar { width: 220px; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.08); }
+.splash-bar i {
+  display: block; height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, #7ad94b, transparent);
+  animation: splash-load 1s ease-in-out infinite;
+}
+@keyframes splash-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+/* ---------- login & modal ---------- */
+.login { background: radial-gradient(ellipse at 50% 30%, rgba(95,191,58,.22), transparent 60%), rgba(7,8,11,.9); }
+.login-card { animation: hero-in .5s cubic-bezier(.2,.8,.2,1) both; border-color: rgba(95,191,58,.25); box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 60px rgba(95,191,58,.12); }
+.modal-card { animation: hero-in .3s cubic-bezier(.2,.8,.2,1) both; }
+
+/* ---------- respect reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

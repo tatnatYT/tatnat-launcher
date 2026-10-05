@@ -612,3 +612,19 @@ body.dragging .tab.active .drop-zone { display: grid; }
 .ghost-btn { white-space: nowrap; }
 .panel-head { gap: 16px; flex-wrap: wrap; }
 .head-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+/* ---------- texture pack sources ---------- */
+.source-row { display: flex; align-items: center; gap: 12px; margin: 0 32px 12px; }
+.source-row .link-btn { font-size: 12px; }
+.pmc-setup {
+  margin: 0 32px 14px; padding: 18px 20px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+}
+.pmc-setup[hidden] { display: none; }
+.pmc-setup h3 { margin: 0 0 6px; font-size: 15px; }
+.pmc-setup p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.pmc-setup .link-btn { font-size: 13px; padding: 0; color: #8ea1ff; }
+.pmc-form { display: flex; gap: 8px; }
+.pmc-form input { flex: 1; max-width: 360px; }
+.pmc-form .install-btn { height: 44px; }
+#packsBrowse.needs-key .search, #packsBrowse.needs-key #packResults { display: none; }

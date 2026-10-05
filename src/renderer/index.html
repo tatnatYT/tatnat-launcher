@@ -6,6 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="cool.css">
 </head>
 <body>
   <aside class="sidebar">
@@ -183,6 +184,23 @@
       </div>
       <div class="drop-zone" data-drop="packs"><div>Drop .zip texture packs here</div></div>
       <div class="mods-browse" id="packsBrowse">
+        <div class="source-row">
+          <div class="segmented small" id="packSource">
+            <button data-source="modrinth" class="on">Modrinth</button>
+            <button data-source="packsmc">PacksMC</button>
+          </div>
+          <button class="link-btn" id="pmcChangeKey" hidden>Change PacksMC key</button>
+        </div>
+        <div class="pmc-setup" id="pmcSetup" hidden>
+          <h3>Connect PacksMC</h3>
+          <p>PacksMC only lets apps in with your own free API key. Make a PacksMC account, create a key on their
+            <button class="link-btn" data-link="https://www.packsmc.com/docs">API page</button>, and paste it here.
+            It's stored encrypted on this PC.</p>
+          <form class="pmc-form" id="pmcForm">
+            <input id="pmcKey" type="password" placeholder="pmc_…" spellcheck="false" autocomplete="off">
+            <button class="install-btn" type="submit" id="pmcSave">Connect</button>
+          </form>
+        </div>
         <div class="search">
           <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
           <input id="packSearch" placeholder="Search Modrinth texture packs…" spellcheck="false" autocomplete="off">
@@ -371,6 +389,7 @@
   </div>
 
   <script src="scene.js"></script>
+  <script src="cool.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

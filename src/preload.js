@@ -37,6 +37,10 @@ contextBridge.exposeInMainWorld('launcher', {
   togglePack: q => ipcRenderer.invoke('packs:toggle', q),
   addPacks: q => ipcRenderer.invoke('packs:add', q),
   openPacksFolder: q => ipcRenderer.invoke('packs:openFolder', q),
+  packsmcHasKey: () => ipcRenderer.invoke('packsmc:hasKey'),
+  packsmcSetKey: key => ipcRenderer.invoke('packsmc:setKey', key),
+  packsmcSearch: q => ipcRenderer.invoke('packsmc:search', q),
+  packsmcInstall: q => ipcRenderer.invoke('packsmc:install', q),
 
   listModpacks: () => ipcRenderer.invoke('modpacks:list'),
   searchModpacks: q => ipcRenderer.invoke('modpacks:search', q),
