@@ -11,8 +11,8 @@
 
 Get the latest version from the **[Releases page](../../releases/latest)**:
 
-- **TTT-Client-Setup.exe** — installer (adds desktop + Start menu shortcuts)
-- **TTT-Client-Portable.exe** — single file, no install needed
+- **TTT-Client-Setup-x.y.z.exe** — installer (adds desktop + Start menu shortcuts)
+- **TTT-Client-Portable-x.y.z.exe** — single file, no install needed
 
 Windows only (64-bit). The exe isn't code-signed, so Windows may show
 "Windows protected your PC" the first time — click **More info → Run anyway**.
