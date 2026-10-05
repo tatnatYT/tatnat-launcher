@@ -1,20 +1,25 @@
-// Modrinth search + install into an instance's mods folder (Fabric only), with required dependencies.
+// Modrinth search + install into a game folder's mods folder (Fabric only), with required dependencies.
+// Also tracks mods the player drops in by hand ("local" mods, id = "file:<filename>").
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
 const { downloadFile } = require('./download');
+const { readModMeta } = require('./filemeta');
 
 const API = 'https://api.modrinth.com/v2';
-const HEADERS = { 'User-Agent': 'tatnat/tatnat-client/0.1.0' };
+const HEADERS = { 'User-Agent': 'tatnat/ttt-client/0.2.0' };
 
-async function api(pathAndQuery) {
-  const res = await fetch(API + pathAndQuery, { headers: HEADERS });
+async function api(pathAndQuery, init = {}) {
+  const res = await fetch(API + pathAndQuery, { ...init, headers: { ...HEADERS, ...(init.headers || {}) } });
   if (!res.ok) throw new Error(`Modrinth returned ${res.status}`);
   return res.json();
 }
 
-async function search({ query = '', mcVersion, offset = 0, limit = 20 }) {
-  const facets = [['project_type:mod'], ['categories:fabric'], [`versions:${mcVersion}`]];
+// type: 'mod' (Fabric only), 'resourcepack' or 'modpack' (Fabric only).
+async function search({ query = '', mcVersion, offset = 0, limit = 20, type = 'mod' }) {
+  const facets = [[`project_type:${type}`]];
+  if (type !== 'resourcepack') facets.push(['categories:fabric']);
+  if (mcVersion) facets.push([`versions:${mcVersion}`]);
   const params = new URLSearchParams({
     query, offset, limit,
     index: query ? 'relevance' : 'downloads',
@@ -33,6 +38,7 @@ async function search({ query = '', mcVersion, offset = 0, limit = 20 }) {
 // ---------- installed-mod bookkeeping (mods.json next to the mods folder) ----------
 const indexFile = dir => path.join(dir, 'mods.json');
 const modsDir = dir => path.join(dir, 'mods');
+const LOCAL = 'file:';
 
 async function readIndex(dir) {
   try { return JSON.parse(await fsp.readFile(indexFile(dir), 'utf8')); } catch { return {}; }
@@ -45,13 +51,26 @@ async function writeIndex(dir, index) {
 async function listInstalled(dir) {
   const index = await readIndex(dir);
   const out = [];
+  const tracked = new Set();
   for (const [id, mod] of Object.entries(index)) {
     const jar = path.join(modsDir(dir), mod.filename);
     const enabled = fs.existsSync(jar);
     if (!enabled && !fs.existsSync(`${jar}.disabled`)) { delete index[id]; continue; } // removed by hand
+    tracked.add(mod.filename);
     out.push({ id, ...mod, enabled });
   }
   await writeIndex(dir, index);
+
+  // Jars that didn't come from Modrinth through us.
+  let files = [];
+  try { files = await fsp.readdir(modsDir(dir)); } catch { /* no mods folder yet */ }
+  for (const f of files) {
+    if (!/\.jar(\.disabled)?$/i.test(f)) continue;
+    const filename = f.replace(/\.disabled$/i, '');
+    if (tracked.has(filename)) continue;
+    const meta = readModMeta(path.join(modsDir(dir), f));
+    out.push({ id: LOCAL + filename, ...meta, filename, enabled: !/\.disabled$/i.test(f), local: true });
+  }
   return out.sort((a, b) => a.title.localeCompare(b.title));
 }
 
@@ -105,6 +124,18 @@ async function install({ dir, projectId, mcVersion, onStatus = () => {} }) {
   return installed;
 }
 
+// Copies jars the player picked or dropped into the mods folder. Returns the names added.
+async function addLocalMods({ dir, files }) {
+  await fsp.mkdir(modsDir(dir), { recursive: true });
+  const added = [];
+  for (const file of files) {
+    if (!/\.jar$/i.test(file) || !fs.existsSync(file)) continue;
+    await fsp.copyFile(file, path.join(modsDir(dir), path.basename(file)));
+    added.push(path.basename(file));
+  }
+  return added;
+}
+
 // Returns { id, slug } when the project has a Fabric build for this version, else null.
 async function projectFor(slugOrId, mcVersion) {
   const params = new URLSearchParams({ loaders: JSON.stringify(['fabric']), game_versions: JSON.stringify([mcVersion]) });
@@ -112,23 +143,27 @@ async function projectFor(slugOrId, mcVersion) {
   return versions.length ? { id: project.id, slug: project.slug } : null;
 }
 
+// Resolves an installed mod id to its jar filename (works for Modrinth and local mods).
+async function filenameFor(dir, projectId) {
+  if (projectId.startsWith(LOCAL)) return path.basename(projectId.slice(LOCAL.length));
+  return (await readIndex(dir))[projectId]?.filename || null;
+}
+
 async function remove({ dir, projectId }) {
+  const filename = await filenameFor(dir, projectId);
+  if (!filename) return;
+  await fsp.rm(path.join(modsDir(dir), filename), { force: true });
+  await fsp.rm(path.join(modsDir(dir), `${filename}.disabled`), { force: true });
   const index = await readIndex(dir);
-  const mod = index[projectId];
-  if (mod) {
-    await fsp.rm(path.join(modsDir(dir), mod.filename), { force: true });
-    await fsp.rm(path.join(modsDir(dir), `${mod.filename}.disabled`), { force: true });
-    delete index[projectId];
-    await writeIndex(dir, index);
-  }
+  if (index[projectId]) { delete index[projectId]; await writeIndex(dir, index); }
 }
 
 async function setEnabled({ dir, projectId, enabled }) {
-  const mod = (await readIndex(dir))[projectId];
-  if (!mod) return;
-  const jar = path.join(modsDir(dir), mod.filename);
+  const filename = await filenameFor(dir, projectId);
+  if (!filename) return;
+  const jar = path.join(modsDir(dir), filename);
   const [from, to] = enabled ? [`${jar}.disabled`, jar] : [jar, `${jar}.disabled`];
   if (fs.existsSync(from)) await fsp.rename(from, to);
 }
 
-module.exports = { search, listInstalled, install, remove, setEnabled, projectFor };
+module.exports = { api, search, pickVersion, listInstalled, install, addLocalMods, remove, setEnabled, projectFor };

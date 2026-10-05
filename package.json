@@ -1,8 +1,8 @@
 {
   "name": "tatnat-client",
-  "productName": "TTT Client",
-  "version": "0.2.0",
-  "description": "TTT Client - a custom Minecraft launcher",
+  "productName": "tatnat launcher",
+  "version": "0.3.0",
+  "description": "tatnat launcher - a custom Minecraft launcher",
   "author": "tatnat",
   "main": "src/main.js",
   "private": true,
@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "com.tatnat.client",
-    "productName": "TTT Client",
+    "productName": "tatnat launcher",
     "copyright": "tatnat",
     "directories": { "output": "dist" },
     "files": ["src/**/*", "assets/**/*", "package.json"],
@@ -36,13 +36,13 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TTT Client",
+      "shortcutName": "tatnat launcher",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
-      "artifactName": "TTT-Client-Setup-${version}.${ext}"
+      "artifactName": "tatnat-launcher-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "TTT-Client-Portable-${version}.${ext}"
+      "artifactName": "tatnat-launcher-Portable-${version}.${ext}"
     }
   }
 }

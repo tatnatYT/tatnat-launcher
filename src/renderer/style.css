@@ -506,3 +506,109 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
 .dock .field-head { flex-wrap: nowrap; }
 /* the type chips double as the Version heading - frees room for all four on one line */
 .dock .field.grow .field-head > span { display: none; }
+
+/* ---------- Accent button ---------- */
+.ghost-btn.accent { color: #fff; background: var(--accent-dark); border-color: var(--accent); }
+.ghost-btn.accent:hover { filter: brightness(1.1); color: #fff; }
+.hint { margin: 0 32px 10px; font-size: 12px; color: var(--muted); }
+
+/* ---------- Modpack mode in the play bar ---------- */
+.pack-chip { display: none; flex: 1; min-width: 0; align-items: center; gap: 14px; }
+.dock.pack-mode .pack-chip { display: flex; }
+.dock.pack-mode .field.grow, .dock.pack-mode .loader-field { display: none; }
+.pack-chip-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pack-chip-text strong { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pack-chip-text span:last-child { font-size: 12px; color: var(--muted); }
+.pack-chip .ghost-btn { height: 40px; }
+
+.pack-tile {
+  width: 52px; height: 52px; flex: none; border-radius: 12px;
+  display: grid; place-items: center;
+  font-family: var(--pixel); font-size: 18px; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  background-size: cover; background-position: center;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.25);
+}
+.pack-tile.img { font-size: 0; }
+
+/* ---------- Modpack grid ---------- */
+.pack-grid {
+  flex: 1; overflow: auto; padding: 0 32px 32px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start;
+}
+.pack-card {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+  transition: border-color .15s, transform .15s;
+}
+.pack-card:hover { border-color: #3c424e; transform: translateY(-2px); }
+.pack-card.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pack-card-top { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.pack-card-top .pack-tile { width: 48px; height: 48px; }
+.pack-card h4 { margin: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pack-card p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.pack-card-actions { display: flex; gap: 6px; }
+.pack-card-actions .install-btn { flex: 1; min-width: 0; }
+.pack-card-actions .ghost-btn { height: 36px; padding: 0 10px; }
+.icon-btn { width: 36px; padding: 0 !important; display: grid; place-items: center; }
+.icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn.danger:hover { color: var(--danger); border-color: #5c2a26; background: #2a1716; }
+
+.pack-new {
+  border-style: dashed; cursor: pointer; align-items: center; justify-content: center; text-align: center;
+  color: var(--muted); min-height: 150px; font: inherit; font-weight: 600;
+}
+.pack-new:hover { color: var(--text); border-color: var(--accent); }
+.pack-new .plus { font-size: 30px; line-height: 1; color: var(--accent); }
+
+/* ---------- Drop zones ---------- */
+.drop-zone {
+  position: absolute; inset: 12px; z-index: 5; display: none;
+  border: 2px dashed var(--accent); border-radius: 16px;
+  background: rgba(20,22,26,.88);
+  place-items: center; pointer-events: none;
+}
+.drop-zone div { font-family: var(--pixel); font-size: 13px; color: var(--accent-light); }
+body.dragging .tab.active .drop-zone { display: grid; }
+
+/* ---------- Modal ---------- */
+.modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(8,9,12,.72); backdrop-filter: blur(4px); }
+.modal[hidden] { display: none; }
+.modal-card {
+  width: 420px; display: flex; flex-direction: column; gap: 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.45);
+}
+.modal-card h3 { margin: 0 0 4px; font-family: var(--pixel); font-size: 14px; }
+.modal-field { display: flex; flex-direction: column; gap: 6px; }
+.modal-field span { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.modal-check { display: flex; gap: 12px; align-items: center; cursor: pointer; font-size: 13px; color: var(--muted); }
+.modal-check b { color: var(--text); }
+.modal-status { margin: 0; font-size: 12px; color: var(--accent-light); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.modal-actions .ghost-btn, .modal-actions .install-btn { height: 40px; }
+
+/* ---------- FPS Boost pack editor ---------- */
+.boost-setting { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
+.boost-count { font-size: 11px; font-weight: 600; color: #f0b429; background: rgba(240,180,41,.12); border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+.boost-pack { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.boost-row { display: flex; align-items: center; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 8px 10px; }
+.boost-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.boost-text strong { font-size: 13px; }
+.boost-text span { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.boost-tag { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 7px; background: rgba(240,180,41,.14); font-size: 13px; }
+.mod-icon.small { width: 28px; height: 28px; border-radius: 7px; }
+.boost-row .remove-btn { width: 28px; height: 28px; }
+
+/* ---------- fit 8 menu items ---------- */
+.sidebar { gap: 14px; overflow-y: auto; }
+.brand { padding-bottom: 12px; }
+.nav-label { padding: 8px 12px 4px; }
+.nav-btn { padding: 5px 10px; }
+.nav-icon { width: 28px; height: 28px; }
+.nav-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-btn kbd { position: absolute; right: 10px; }
+.sidebar-foot { gap: 8px; }
+.ghost-btn { white-space: nowrap; }
+.panel-head { gap: 16px; flex-wrap: wrap; }
+.head-actions { flex-wrap: wrap; justify-content: flex-end; }

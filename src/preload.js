@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('launcher', {
   appVersion: () => ipcRenderer.invoke('app:version'),
@@ -17,13 +17,43 @@ contextBridge.exposeInMainWorld('launcher', {
   onProgress: cb => ipcRenderer.on('game:progress', (_e, p) => cb(p)),
   onLog: cb => ipcRenderer.on('game:log', (_e, t) => cb(t)),
   onState: cb => ipcRenderer.on('game:state', (_e, s) => cb(s)),
+
+  // Paths of files dropped onto the window (File.path no longer exists in Electron).
+  pathForFile: file => webUtils.getPathForFile(file),
+
   searchMods: q => ipcRenderer.invoke('mods:search', q),
   listMods: q => ipcRenderer.invoke('mods:list', q),
   installMod: q => ipcRenderer.invoke('mods:install', q),
   removeMod: q => ipcRenderer.invoke('mods:remove', q),
   toggleMod: q => ipcRenderer.invoke('mods:toggle', q),
+  addMods: q => ipcRenderer.invoke('mods:add', q),
   openModsFolder: q => ipcRenderer.invoke('mods:openFolder', q),
   onModStatus: cb => ipcRenderer.on('mods:status', (_e, s) => cb(s)),
+
+  searchPacks: q => ipcRenderer.invoke('packs:search', q),
+  listPacks: q => ipcRenderer.invoke('packs:list', q),
+  installPack: q => ipcRenderer.invoke('packs:install', q),
+  removePack: q => ipcRenderer.invoke('packs:remove', q),
+  togglePack: q => ipcRenderer.invoke('packs:toggle', q),
+  addPacks: q => ipcRenderer.invoke('packs:add', q),
+  openPacksFolder: q => ipcRenderer.invoke('packs:openFolder', q),
+
+  listModpacks: () => ipcRenderer.invoke('modpacks:list'),
+  searchModpacks: q => ipcRenderer.invoke('modpacks:search', q),
+  createModpack: q => ipcRenderer.invoke('modpacks:create', q),
+  renameModpack: q => ipcRenderer.invoke('modpacks:rename', q),
+  deleteModpack: q => ipcRenderer.invoke('modpacks:delete', q),
+  openModpackFolder: q => ipcRenderer.invoke('modpacks:openFolder', q),
+  installModpack: q => ipcRenderer.invoke('modpacks:installModrinth', q),
+  importModpacks: q => ipcRenderer.invoke('modpacks:import', q),
+  exportModpack: q => ipcRenderer.invoke('modpacks:export', q),
+  onModpackStatus: cb => ipcRenderer.on('modpacks:status', (_e, s) => cb(s)),
+
+  getBoost: () => ipcRenderer.invoke('boost:get'),
+  setBoostBuiltin: q => ipcRenderer.invoke('boost:setBuiltin', q),
+  addBoostMod: m => ipcRenderer.invoke('boost:addExtra', m),
+  removeBoostMod: q => ipcRenderer.invoke('boost:removeMod', q),
+
   presenceStatus: () => ipcRenderer.invoke('presence:status'),
   setPresenceView: v => ipcRenderer.invoke('presence:view', v),
   onAccounts: cb => ipcRenderer.on('accounts:changed', (_e, a) => cb(a)),

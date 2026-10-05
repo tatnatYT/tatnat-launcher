@@ -1,13 +1,15 @@
-const { app, BrowserWindow, ipcMain, shell, safeStorage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, safeStorage, session, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { launch, getManifest, offlineUuid } = require('./core/launch');
 const { getLocalVersions } = require('./core/versions');
 const auth = require('./core/auth');
-const { installFabric } = require('./core/fabric');
+const { installFabric, loaderVersionOf } = require('./core/fabric');
 const modrinth = require('./core/modrinth');
+const texturePacks = require('./core/packs');
+const modpacks = require('./core/modpacks');
 const { DiscordPresence } = require('./core/discord');
-const { installBoostPack, writeBoostOptions } = require('./core/boost');
+const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
 const ROOT = path.join(app.getPath('appData'), '.tatnatclient');
@@ -15,8 +17,8 @@ const OLD_ROOT = path.join(app.getPath('appData'), '.baselauncher'); // pre-rena
 const ICON = path.join(__dirname, '..', 'assets', 'icon.ico');
 const SETTINGS_FILE = path.join(ROOT, 'launcher_settings.json');
 const ACCOUNTS_FILE = path.join(ROOT, 'launcher_accounts.json');
-const DEFAULT_SETTINGS = { version: null, versionTypes: ['release'], loader: 'vanilla', memoryMb: 4096, closeOnLaunch: false,
-  discord: true, discordClientId: '' };
+const DEFAULT_SETTINGS = { version: null, versionTypes: ['release'], loader: 'vanilla', activePack: null, memoryMb: 4096, closeOnLaunch: false,
+  discord: true, discordClientId: '', boostDisabled: [], boostExtra: [] };
 
 let win;
 let game = null;
@@ -132,12 +134,12 @@ function send(channel, payload) {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1040,
-    height: 660,
+    width: 1080,
+    height: 740,
     minWidth: 860,
-    minHeight: 560,
+    minHeight: 640,
     backgroundColor: '#14161a',
-    title: 'TTT Client',
+    title: 'tatnat launcher',
     icon: ICON,
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
@@ -200,26 +202,142 @@ ipcMain.handle('folder:open', () => {
   return shell.openPath(ROOT);
 });
 
-// ---------- mods (Modrinth, Fabric) ----------
-ipcMain.handle('mods:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset }));
-ipcMain.handle('mods:list', (_e, { mcVersion }) => modrinth.listInstalled(instanceDir(mcVersion)));
-ipcMain.handle('mods:install', (_e, { mcVersion, projectId }) =>
-  modrinth.install({ dir: instanceDir(mcVersion), projectId, mcVersion, onStatus: s => send('mods:status', s) }));
-ipcMain.handle('mods:remove', (_e, { mcVersion, projectId }) => modrinth.remove({ dir: instanceDir(mcVersion), projectId }));
-ipcMain.handle('mods:toggle', (_e, { mcVersion, projectId, enabled }) =>
-  modrinth.setEnabled({ dir: instanceDir(mcVersion), projectId, enabled }));
-ipcMain.handle('mods:openFolder', (_e, { mcVersion }) => {
-  const dir = path.join(instanceDir(mcVersion), 'mods');
-  fs.mkdirSync(dir, { recursive: true });
-  return shell.openPath(dir);
+// ---------- where mods / texture packs go ----------
+// The window describes the target as either { packId } (a modpack) or { version, loader }.
+async function resolveTarget(t = {}) {
+  if (t.packId) {
+    const meta = await modpacks.readMeta(ROOT, t.packId);
+    return { gameDir: modpacks.packDir(ROOT, meta.id), mcVersion: meta.mcVersion, fabric: true, pack: meta };
+  }
+  const fabric = t.loader === 'fabric' || t.loader === 'boost';
+  return { gameDir: fabric ? instanceDir(t.version) : ROOT, mcVersion: t.version, fabric, pack: null };
+}
+
+async function pickFiles(title, name, extensions) {
+  const res = await dialog.showOpenDialog(win, { title, properties: ['openFile', 'multiSelections'], filters: [{ name, extensions }] });
+  return res.canceled ? [] : res.filePaths;
+}
+
+function openSubfolder(dir, sub) {
+  const full = path.join(dir, sub);
+  fs.mkdirSync(full, { recursive: true });
+  return shell.openPath(full);
+}
+
+// ---------- mods (Modrinth + your own jars, Fabric) ----------
+ipcMain.handle('mods:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset, type: 'mod' }));
+ipcMain.handle('mods:list', async (_e, { target }) => modrinth.listInstalled((await resolveTarget(target)).gameDir));
+ipcMain.handle('mods:install', async (_e, { target, projectId }) => {
+  const t = await resolveTarget(target);
+  return modrinth.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, onStatus: s => send('mods:status', s) });
+});
+ipcMain.handle('mods:remove', async (_e, { target, projectId }) => modrinth.remove({ dir: (await resolveTarget(target)).gameDir, projectId }));
+ipcMain.handle('mods:toggle', async (_e, { target, projectId, enabled }) =>
+  modrinth.setEnabled({ dir: (await resolveTarget(target)).gameDir, projectId, enabled }));
+ipcMain.handle('mods:add', async (_e, { target, files }) => {
+  const list = files?.length ? files : await pickFiles('Add mod files', 'Fabric mods', ['jar']);
+  return modrinth.addLocalMods({ dir: (await resolveTarget(target)).gameDir, files: list });
+});
+ipcMain.handle('mods:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'mods'));
+
+// ---------- texture packs ----------
+ipcMain.handle('packs:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset, type: 'resourcepack' }));
+ipcMain.handle('packs:list', async (_e, { target }) => texturePacks.list((await resolveTarget(target)).gameDir));
+ipcMain.handle('packs:install', async (_e, { target, projectId }) => {
+  const t = await resolveTarget(target);
+  return texturePacks.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion });
+});
+ipcMain.handle('packs:remove', async (_e, { target, name }) => texturePacks.remove({ dir: (await resolveTarget(target)).gameDir, name }));
+ipcMain.handle('packs:toggle', async (_e, { target, name, enabled }) =>
+  texturePacks.setEnabled({ dir: (await resolveTarget(target)).gameDir, name, enabled }));
+ipcMain.handle('packs:add', async (_e, { target, files }) => {
+  const list = files?.length ? files : await pickFiles('Add texture packs', 'Texture packs', ['zip']);
+  return texturePacks.addLocal({ dir: (await resolveTarget(target)).gameDir, files: list });
+});
+ipcMain.handle('packs:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'resourcepacks'));
+
+// ---------- the player's FPS Boost pack ----------
+function boostPrefs() {
+  const s = readSettings();
+  return { disabled: s.boostDisabled, extra: s.boostExtra };
+}
+
+ipcMain.handle('boost:get', () => ({ builtins: BOOST_MODS, ...boostPrefs() }));
+ipcMain.handle('boost:setBuiltin', (_e, { slug, enabled }) => {
+  const s = readSettings();
+  const off = new Set(s.boostDisabled);
+  if (enabled) off.delete(slug); else off.add(slug);
+  writeSettings({ ...s, boostDisabled: [...off] });
+  return boostPrefs();
+});
+ipcMain.handle('boost:addExtra', (_e, mod) => {
+  const s = readSettings();
+  if (BOOST_MODS.some(m => m.slug === mod.slug)) {
+    // A built-in the player switched off and is now adding back.
+    writeSettings({ ...s, boostDisabled: s.boostDisabled.filter(x => x !== mod.slug) });
+  } else if (!s.boostExtra.some(m => m.id === mod.id)) {
+    writeSettings({ ...s, boostExtra: [...s.boostExtra, { id: mod.id, slug: mod.slug, title: mod.title, icon: mod.icon || null }] });
+  }
+  return boostPrefs();
+});
+// Removing a mod from the FPS Boost setup takes it out of the pack, so it isn't reinstalled next launch.
+ipcMain.handle('boost:removeMod', (_e, { id, slug }) => {
+  const s = readSettings();
+  const builtin = BOOST_MODS.find(m => m.slug === slug || m.slug === id);
+  writeSettings({
+    ...s,
+    boostExtra: s.boostExtra.filter(m => m.id !== id && (!slug || m.slug !== slug)),
+    boostDisabled: builtin && !s.boostDisabled.includes(builtin.slug) ? [...s.boostDisabled, builtin.slug] : s.boostDisabled,
+  });
+  return boostPrefs();
 });
 
-ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', memoryMb }) => {
+// ---------- modpacks ----------
+ipcMain.handle('modpacks:list', () => modpacks.list(ROOT));
+ipcMain.handle('modpacks:search', (_e, { query, offset }) => modrinth.search({ query, offset, type: 'modpack' }));
+ipcMain.handle('modpacks:create', async (_e, { name, mcVersion, boost }) => {
+  const loaderVersion = loaderVersionOf(await installFabric(ROOT, mcVersion), mcVersion); // also checks Fabric support
+  const meta = await modpacks.create(ROOT, { name, mcVersion, loaderVersion });
+  if (boost) {
+    const dir = modpacks.packDir(ROOT, meta.id);
+    await installBoostPack({ dir, mcVersion, ...boostPrefs(), onStatus: s => send('modpacks:status', s) });
+    await writeBoostOptions(dir);
+  }
+  return meta;
+});
+ipcMain.handle('modpacks:rename', (_e, { id, name }) => modpacks.update(ROOT, id, { name: String(name).trim().slice(0, 48) || 'My modpack' }));
+ipcMain.handle('modpacks:delete', (_e, { id }) => modpacks.remove(ROOT, id));
+ipcMain.handle('modpacks:openFolder', (_e, { id }) => shell.openPath(modpacks.packDir(ROOT, id)));
+ipcMain.handle('modpacks:installModrinth', (_e, { projectId }) =>
+  modpacks.installFromModrinth(ROOT, projectId, { onStatus: s => send('modpacks:status', s) }));
+ipcMain.handle('modpacks:import', async (_e, { files } = {}) => {
+  const list = files?.length ? files : await pickFiles('Import modpack', 'Modrinth modpacks', ['mrpack']);
+  const imported = [];
+  for (const f of list.filter(p => /\.mrpack$/i.test(p))) {
+    imported.push(await modpacks.importMrpack(ROOT, f, { onStatus: s => send('modpacks:status', s) }));
+  }
+  return imported;
+});
+ipcMain.handle('modpacks:export', async (_e, { id }) => {
+  const meta = await modpacks.readMeta(ROOT, id);
+  const res = await dialog.showSaveDialog(win, {
+    title: 'Export modpack',
+    defaultPath: path.join(app.getPath('downloads'), `${meta.name.replace(/[^\w\- ]+/g, '').trim() || 'modpack'}.mrpack`),
+    filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }],
+  });
+  if (res.canceled || !res.filePath) return null;
+  const loaderVersion = meta.loaderVersion || loaderVersionOf(await installFabric(ROOT, meta.mcVersion), meta.mcVersion);
+  const result = await modpacks.exportPack(ROOT, id, res.filePath, { loaderVersion });
+  shell.showItemInFolder(res.filePath);
+  return { ...result, file: res.filePath };
+});
+
+ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId = null, memoryMb }) => {
   if (game) throw new Error('Minecraft is already running');
   const store = readAccounts();
   let account = store.accounts.find(a => a.id === store.active);
   if (!account) throw new Error('Sign in first.');
-  writeSettings({ ...readSettings(), version, loader, memoryMb });
+  writeSettings({ ...readSettings(), version, loader, activePack: packId, memoryMb });
 
   playing = { version, loader, modCount: 0, name: account.name, uuid: account.type === 'microsoft' ? account.uuid : null, start: null };
   setGameState('installing');
@@ -236,21 +354,32 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', memoryMb
     }
     let versionId = version;
     let gameDir = ROOT;
-    let useFabric = loader === 'fabric' || loader === 'boost';
-    if (loader === 'boost') {
+    let useFabric = !packId && (loader === 'fabric' || loader === 'boost');
+    if (packId) {
+      const meta = await modpacks.update(ROOT, packId, { lastPlayed: Date.now() });
+      send('game:progress', { stage: `Preparing ${meta.name}`, done: 0, total: 1 });
+      versionId = await installFabric(ROOT, meta.mcVersion, meta.loaderVersion);
+      gameDir = modpacks.packDir(ROOT, meta.id);
+      const modsFolder = path.join(gameDir, 'mods');
+      Object.assign(playing, {
+        version: meta.mcVersion, loader: 'modpack', packName: meta.name,
+        modCount: fs.existsSync(modsFolder) ? fs.readdirSync(modsFolder).filter(f => f.endsWith('.jar')).length : 0,
+      });
+    }
+    if (loader === 'boost' && !packId) {
       try {
         send('game:progress', { stage: 'Installing Fabric', done: 0, total: 1 });
         versionId = await installFabric(ROOT, version);
         gameDir = instanceDir(version);
         send('game:progress', { stage: 'Installing FPS Boost mods', done: 0, total: 1 });
-        const res = await installBoostPack({ dir: gameDir, mcVersion: version, onStatus: s => send('game:log', `[TTT Client] ${s}\n`) });
-        if (res.added.length) send('game:log', `[TTT Client] FPS Boost added: ${res.added.join(', ')}\n`);
-        if (res.unavailable.length) send('game:log', `[TTT Client] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
-        if (await writeBoostOptions(gameDir)) send('game:log', '[TTT Client] Applied FPS-friendly video settings\n');
+        const res = await installBoostPack({ dir: gameDir, mcVersion: version, ...boostPrefs(), onStatus: s => send('game:log', `[tatnat launcher] ${s}\n`) });
+        if (res.added.length) send('game:log', `[tatnat launcher] FPS Boost added: ${res.added.join(', ')}\n`);
+        if (res.unavailable.length) send('game:log', `[tatnat launcher] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
+        if (await writeBoostOptions(gameDir)) send('game:log', '[tatnat launcher] Applied FPS-friendly video settings\n');
       } catch (err) {
         if (!/support/i.test(err.message)) throw err;
         // Fabric doesn't exist for very old versions: still launch, with the JVM tuning only.
-        send('game:log', `[TTT Client] ${err.message} Launching vanilla with the optimised Java settings.\n`);
+        send('game:log', `[tatnat launcher] ${err.message} Launching vanilla with the optimised Java settings.\n`);
         useFabric = false;
         playing.loader = 'vanilla';
         versionId = version;
@@ -284,7 +413,7 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', memoryMb
   if (readSettings().closeOnLaunch) win.minimize();
   game.on('exit', code => {
     game = null;
-    send('game:log', `\n[TTT Client] Minecraft exited with code ${code}\n`);
+    send('game:log', `\n[tatnat launcher] Minecraft exited with code ${code}\n`);
     setGameState('idle');
     if (win && !win.isDestroyed()) win.restore();
   });
@@ -296,7 +425,7 @@ ipcMain.handle('game:kill', () => { game?.kill(); });
 // Pictures are Minecraft heads served by mc-heads.net, so the Discord app needs no uploaded art.
 const LOGO_URL = 'https://mc-heads.net/avatar/5de9cae8516c461bb8051e7d52c00a26/256'; // tatnat
 const TAB_STATUS = {
-  play: 'Picking a version', mods: 'Browsing mods', accounts: 'Managing accounts',
+  play: 'Picking a version', modpacks: 'Building a modpack', mods: 'Browsing mods', packs: 'Picking texture packs', accounts: 'Managing accounts',
   console: 'Reading the console', settings: 'Tweaking settings', credits: 'Reading the credits',
 };
 const presence = new DiscordPresence();
@@ -312,13 +441,14 @@ function setGameState(s) {
 
 function buildActivity() {
   const activity = {
-    assets: { large_image: LOGO_URL, large_text: 'TTT Client' },
+    assets: { large_image: LOGO_URL, large_text: 'tatnat launcher' },
     buttons: [{ label: 'tatnat on YouTube', url: 'https://www.youtube.com/@tatnatmc' }],
   };
   if (gameState === 'running' && playing) {
     activity.details = `Playing Minecraft ${playing.version}`;
     const mods = `${playing.modCount} mod${playing.modCount === 1 ? '' : 's'}`;
-    activity.state = playing.loader === 'boost' ? `FPS Boost · ${mods}`
+    activity.state = playing.loader === 'modpack' ? `${playing.packName} · ${mods}`
+      : playing.loader === 'boost' ? `FPS Boost · ${mods}`
       : playing.loader === 'fabric' ? `Fabric · ${mods}`
       : 'Vanilla';
     activity.timestamps = { start: playing.start };

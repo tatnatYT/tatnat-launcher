@@ -5,22 +5,27 @@ const { fetchJson, exists } = require('./download');
 
 const META = 'https://meta.fabricmc.net/v2';
 
-async function installFabric(root, mcVersion) {
-  let loaders;
-  try {
-    loaders = await fetchJson(`${META}/versions/loader/${encodeURIComponent(mcVersion)}`);
-  } catch (err) {
-    // Fabric's API answers 400 for game versions it has never heard of (e.g. 1.8.9).
-    if (/HTTP 400/.test(err.message)) throw new Error(`Fabric doesn't support Minecraft ${mcVersion}.`);
-    // Offline: reuse a Fabric profile we installed before.
-    const dirs = await fsp.readdir(path.join(root, 'versions')).catch(() => []);
-    const local = dirs.filter(d => d.startsWith('fabric-loader-') && d.endsWith(`-${mcVersion}`)).sort().pop();
-    if (local) return local;
-    throw err;
+// Returns the profile id ("fabric-loader-<loader>-<mc>"). loaderVersion pins a specific
+// loader (modpacks ask for one); otherwise the newest stable loader is used.
+async function installFabric(root, mcVersion, loaderVersion = null) {
+  let loader = loaderVersion;
+  if (!loader) {
+    let loaders;
+    try {
+      loaders = await fetchJson(`${META}/versions/loader/${encodeURIComponent(mcVersion)}`);
+    } catch (err) {
+      // Fabric's API answers 400 for game versions it has never heard of (e.g. 1.8.9).
+      if (/HTTP 400/.test(err.message)) throw new Error(`Fabric doesn't support Minecraft ${mcVersion}.`);
+      // Offline: reuse a Fabric profile we installed before.
+      const dirs = await fsp.readdir(path.join(root, 'versions')).catch(() => []);
+      const local = dirs.filter(d => d.startsWith('fabric-loader-') && d.endsWith(`-${mcVersion}`)).sort().pop();
+      if (local) return local;
+      throw err;
+    }
+    if (!loaders.length) throw new Error(`Fabric doesn't support Minecraft ${mcVersion} (yet).`);
+    loader = (loaders.find(l => l.loader.stable) || loaders[0]).loader.version;
   }
-  if (!loaders.length) throw new Error(`Fabric doesn't support Minecraft ${mcVersion} (yet).`);
 
-  const loader = (loaders.find(l => l.loader.stable) || loaders[0]).loader.version;
   const id = `fabric-loader-${loader}-${mcVersion}`;
   const file = path.join(root, 'versions', id, `${id}.json`);
   if (!(await exists(file))) {
@@ -31,4 +36,9 @@ async function installFabric(root, mcVersion) {
   return id;
 }
 
-module.exports = { installFabric };
+// "fabric-loader-0.19.5-26.3" -> "0.19.5"
+function loaderVersionOf(profileId, mcVersion) {
+  return profileId.slice('fabric-loader-'.length, -(mcVersion.length + 1));
+}
+
+module.exports = { installFabric, loaderVersionOf };

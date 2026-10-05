@@ -20,6 +20,8 @@ function showTab(name) {
   moveIndicator();
   if (name === 'console') $('logDot').hidden = true;
   if (name === 'mods') refreshMods();
+  if (name === 'packs') refreshPacks();
+  if (name === 'modpacks') loadModpacks();
   api.setPresenceView({ tab: name });
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -35,7 +37,7 @@ function moveIndicator() {
 window.addEventListener('resize', moveIndicator);
 document.fonts?.ready.then(moveIndicator);
 
-// Ctrl+1..6 jumps between menu items.
+// Ctrl+1..8 jumps between menu items.
 document.addEventListener('keydown', e => {
   if (!e.ctrlKey || e.altKey || e.shiftKey) return;
   const btn = document.querySelector(`.nav-btn[data-key="${e.key}"]`);
@@ -46,7 +48,8 @@ document.addEventListener('keydown', e => {
 let progressStage = '';
 function updateStatus() {
   const card = $('statusCard');
-  const label = `Minecraft ${$('version').value || '…'}${LOADER_SUFFIX[settings.loader] || ''}`;
+  const pack = activePack();
+  const label = pack ? `${pack.name} · Minecraft ${pack.mcVersion}` : `Minecraft ${$('version').value || '…'}${LOADER_SUFFIX[settings.loader] || ''}`;
   card.classList.remove('ready', 'busy', 'running');
   if (state === 'installing') {
     card.classList.add('busy');
@@ -224,6 +227,12 @@ function renderVersions() {
 
 function updateHero() {
   updateStatus();
+  const pack = activePack();
+  if (pack) {
+    $('heroVersion').textContent = pack.name;
+    $('heroSub').textContent = `Modpack · Fabric · Minecraft ${pack.mcVersion} · ${pack.modCount} mod${pack.modCount === 1 ? '' : 's'}`;
+    return;
+  }
   const id = $('version').value;
   const v = versionData.versions.find(x => x.id === id);
   $('heroVersion').textContent = id ? `Minecraft ${id}` : 'Minecraft';
@@ -237,9 +246,7 @@ function updateHero() {
 $('version').addEventListener('change', () => {
   settings.version = $('version').value;
   api.setSettings({ version: settings.version });
-  updateHero();
-  mods.loadedFor = null; // mods are per Minecraft version
-  loadInstalled(); // keeps the menu's mod count in step
+  targetChanged(); // mods and texture packs are per version
 });
 
 async function loadVersions() {
@@ -263,13 +270,13 @@ $('play').addEventListener('click', async () => {
   if (state === 'running') { api.kill(); return; }
   if (!activeAccount()) { loginDismissed = false; renderAccounts(); return; }
   const version = $('version').value;
-  if (!version) return;
+  if (!version && !activePack()) return;
   $('toast').hidden = true;
   try {
-    await api.launch({ version, loader: settings.loader, memoryMb: settings.memoryMb });
+    await api.launch({ version, loader: settings.loader, packId: activePack()?.id || null, memoryMb: settings.memoryMb });
   } catch (err) {
     toast(cleanError(err));
-    appendLog(`\n[TTT Client] Launch failed: ${cleanError(err)}\n`);
+    appendLog(`\n[tatnat launcher] Launch failed: ${cleanError(err)}\n`);
   }
 });
 
@@ -280,6 +287,7 @@ api.onState(s => {
   if (s !== 'installing') progressStage = '';
   updatePlayButton();
   updateStatus();
+  if (s === 'idle') loadModpacks();
 });
 
 api.onProgress(({ stage, done, total }) => {
@@ -352,26 +360,55 @@ $('memory').addEventListener('change', () => api.setSettings({ memoryMb: setting
 $('closeOnLaunch').addEventListener('change', () => api.setSettings({ closeOnLaunch: $('closeOnLaunch').checked }));
 $('openFolder').addEventListener('click', () => api.openFolder());
 
+// ---------- target: a modpack, or a version + loader ----------
+let modpackList = [];
+const activePack = () => modpackList.find(p => p.id === settings.activePack) || null;
+const fmt = n => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
+
+// Where mods and texture packs go right now - also what Play launches.
+function target() {
+  const pack = activePack();
+  return pack ? { packId: pack.id } : { version: $('version').value, loader: settings.loader };
+}
+const targetKey = () => JSON.stringify(target());
+const mcVersion = () => activePack()?.mcVersion || $('version').value;
+const LOADER_NAME = { vanilla: 'Vanilla', fabric: 'Fabric', boost: 'FPS Boost' };
+function targetLabel() {
+  const pack = activePack();
+  return pack ? `Modpack “${pack.name}” · Minecraft ${pack.mcVersion}` : `${LOADER_NAME[settings.loader]} · Minecraft ${mcVersion()}`;
+}
+const modsAllowed = () => !!activePack() || settings.loader !== 'vanilla';
+// True when the Mods tab is editing the FPS Boost setup (so changes join the player's boost pack).
+const editingBoost = () => !activePack() && settings.loader === 'boost';
+
+// Anything that changes the target reloads the lists that depend on it.
+function targetChanged() {
+  mods.loadedFor = null;
+  packs.loadedFor = null;
+  renderPackChip();
+  updateHero();
+  $('fabricBanner').hidden = modsAllowed();
+  if ($('tab-mods').classList.contains('active')) refreshMods();
+  if ($('tab-packs').classList.contains('active')) refreshPacks();
+  loadInstalledMods(); // keeps the menu badges in step
+  loadInstalledPacks();
+}
+
 // ---------- loader ----------
 function renderLoader() {
   document.querySelectorAll('#loader button').forEach(b => b.classList.toggle('on', b.dataset.loader === settings.loader));
-  $('fabricBanner').hidden = settings.loader !== 'vanilla';
-  updateHero();
 }
 
 function setLoader(loader) {
   settings.loader = loader;
   api.setSettings({ loader });
   renderLoader();
+  targetChanged();
 }
 document.querySelectorAll('#loader button').forEach(b => b.addEventListener('click', () => setLoader(b.dataset.loader)));
 $('useFabric').addEventListener('click', () => setLoader('fabric'));
 
-// ---------- mods ----------
-const mods = { query: '', offset: 0, total: 0, results: [], installed: new Map(), busy: new Set(), loading: false, loadedFor: null };
-const fmt = n => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
-const mcVersion = () => $('version').value;
-
+// ---------- shared list pieces ----------
 function modIcon(src) {
   const img = document.createElement('img');
   img.className = 'mod-icon';
@@ -381,15 +418,20 @@ function modIcon(src) {
   return img;
 }
 
-function modBody(title, slugOrId, meta, desc, stats) {
+// kind: 'mod' | 'resourcepack' | 'modpack' (for the Modrinth link); slug null = not on Modrinth.
+function modBody(title, slug, meta, desc, stats, kind = 'mod') {
   const body = document.createElement('div');
   body.className = 'mod-body';
   const head = document.createElement('div');
   head.className = 'mod-title';
   const link = document.createElement('button');
   link.textContent = title;
-  link.title = 'Open on Modrinth';
-  link.addEventListener('click', () => api.openExternal(`https://modrinth.com/mod/${slugOrId}`));
+  if (slug) {
+    link.title = 'Open on Modrinth';
+    link.addEventListener('click', () => api.openExternal(`https://modrinth.com/${kind}/${slug}`));
+  } else {
+    link.disabled = true;
+  }
   const by = document.createElement('span');
   by.textContent = meta;
   head.append(link, by);
@@ -399,12 +441,12 @@ function modBody(title, slugOrId, meta, desc, stats) {
   return body;
 }
 
-function installButton(id) {
+function actionButton(state, onClick, labels = {}) {
   const btn = document.createElement('button');
   btn.className = 'install-btn';
-  if (mods.busy.has(id)) { btn.textContent = 'Installing…'; btn.classList.add('busy'); btn.disabled = true; }
-  else if (mods.installed.has(id)) { btn.textContent = 'Installed ✓'; btn.classList.add('done'); btn.disabled = true; }
-  else { btn.textContent = 'Install'; btn.addEventListener('click', () => installMod(id)); }
+  if (state === 'busy') { btn.textContent = labels.busy || 'Installing…'; btn.classList.add('busy'); btn.disabled = true; }
+  else if (state === 'done') { btn.textContent = labels.done || 'Installed ✓'; btn.classList.add('done'); btn.disabled = true; }
+  else { btn.textContent = labels.idle || 'Install'; btn.addEventListener('click', onClick); }
   return btn;
 }
 
@@ -415,7 +457,47 @@ function listMessage(text) {
   return p;
 }
 
-function renderResults() {
+function loadMoreButton(onClick) {
+  const more = document.createElement('button');
+  more.className = 'ghost-btn more-btn';
+  more.textContent = 'Load more';
+  more.addEventListener('click', onClick);
+  return more;
+}
+
+function iconButton(title, svgPath, onClick, danger = false) {
+  const b = document.createElement('button');
+  b.className = `ghost-btn icon-btn${danger ? ' danger' : ''}`;
+  b.title = title;
+  b.innerHTML = `<svg viewBox="0 0 24 24"><path d="${svgPath}"/></svg>`;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function setBadge(id, n) {
+  $(id).textContent = n;
+  $(id).hidden = !n;
+}
+
+function wireSegmented(groupId, views) {
+  document.querySelectorAll(`#${groupId} button`).forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll(`#${groupId} button`).forEach(x => x.classList.toggle('on', x === b));
+    for (const [view, el] of Object.entries(views)) $(el).hidden = b.dataset.view !== view;
+  }));
+}
+
+function debounceInput(inputId, onSearch) {
+  let timer;
+  $(inputId).addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => onSearch($(inputId).value.trim()), 350);
+  });
+}
+
+// ---------- mods ----------
+const mods = { query: '', offset: 0, total: 0, results: [], installed: new Map(), busy: new Set(), loading: false, loadedFor: null };
+
+function renderModResults() {
   const list = $('modResults');
   list.replaceChildren();
   if (!mods.results.length) {
@@ -425,25 +507,20 @@ function renderResults() {
   for (const m of mods.results) {
     const card = document.createElement('div');
     card.className = 'mod-card';
-    card.append(modIcon(m.icon), modBody(m.title, m.slug, `by ${m.author}`, m.description, `${fmt(m.downloads)} downloads`), installButton(m.id));
+    const state = mods.busy.has(m.id) ? 'busy' : mods.installed.has(m.id) ? 'done' : 'idle';
+    card.append(modIcon(m.icon), modBody(m.title, m.slug, `by ${m.author}`, m.description, `${fmt(m.downloads)} downloads`),
+      actionButton(state, () => installMod(m.id)));
     list.append(card);
   }
-  if (mods.results.length < mods.total) {
-    const more = document.createElement('button');
-    more.className = 'ghost-btn more-btn';
-    more.textContent = 'Load more';
-    more.addEventListener('click', () => searchMods(true));
-    list.append(more);
-  }
+  if (mods.results.length < mods.total) list.append(loadMoreButton(() => searchMods(true)));
 }
 
-function renderInstalled() {
+function renderInstalledMods() {
   const list = $('installedList');
   list.replaceChildren();
   $('installedCount').textContent = mods.installed.size ? `(${mods.installed.size})` : '';
-  $('modsBadge').textContent = mods.installed.size;
-  $('modsBadge').hidden = !mods.installed.size;
-  if (!mods.installed.size) { list.append(listMessage(`No mods installed for Minecraft ${mcVersion()} yet.`)); return; }
+  setBadge('modsBadge', mods.installed.size);
+  if (!mods.installed.size) { list.append(listMessage(`No mods here yet. Install some, or add your own .jar files.`)); return; }
   for (const [id, m] of mods.installed) {
     const card = document.createElement('div');
     card.className = `mod-card${m.enabled ? '' : ' disabled'}`;
@@ -453,88 +530,495 @@ function renderInstalled() {
     toggle.checked = m.enabled;
     toggle.title = m.enabled ? 'Enabled' : 'Disabled';
     toggle.addEventListener('change', async () => {
-      await api.toggleMod({ mcVersion: mcVersion(), projectId: id, enabled: toggle.checked });
-      await loadInstalled();
+      await api.toggleMod({ target: target(), projectId: id, enabled: toggle.checked });
+      await loadInstalledMods();
     });
     const remove = document.createElement('button');
     remove.className = 'remove-btn';
     remove.title = 'Remove mod';
     remove.textContent = '✕';
     remove.addEventListener('click', async () => {
-      await api.removeMod({ mcVersion: mcVersion(), projectId: id });
-      await loadInstalled();
+      await api.removeMod({ target: target(), projectId: id });
+      if (editingBoost()) { await api.removeBoostMod({ id, slug: m.slug }); renderBoostPack(); }
+      await loadInstalledMods();
     });
-    const meta = `${m.versionNumber}${m.dependency ? ' · dependency' : ''}`;
-    card.append(modIcon(m.icon), modBody(m.title, id, meta, null, m.filename), toggle, remove);
+    const meta = [m.versionNumber, m.local ? 'added by you' : m.dependency ? 'dependency' : ''].filter(Boolean).join(' · ');
+    card.append(modIcon(m.icon), modBody(m.title, m.local ? null : (m.slug || id), meta, null, m.filename), toggle, remove);
     list.append(card);
   }
 }
 
-async function loadInstalled() {
-  const list = await api.listMods({ mcVersion: mcVersion() });
+async function loadInstalledMods() {
+  if (!modsAllowed()) { mods.installed = new Map(); renderInstalledMods(); renderModResults(); return; }
+  const list = await api.listMods({ target: target() });
   mods.installed = new Map(list.map(m => [m.id, m]));
-  renderInstalled();
-  renderResults();
+  renderInstalledMods();
+  renderModResults();
 }
 
-let searchSeq = 0;
+let modSeq = 0;
 async function searchMods(append = false) {
-  const seq = ++searchSeq;
-  if (!append) { mods.offset = 0; mods.results = []; mods.loading = true; renderResults(); }
+  const seq = ++modSeq;
+  if (!append) { mods.offset = 0; mods.results = []; mods.loading = true; renderModResults(); }
   try {
     const res = await api.searchMods({ query: mods.query, mcVersion: mcVersion(), offset: mods.offset });
-    if (seq !== searchSeq) return; // a newer search started meanwhile
+    if (seq !== modSeq) return; // a newer search started meanwhile
     mods.total = res.total;
     mods.results = append ? [...mods.results, ...res.hits] : res.hits;
     mods.offset = mods.results.length;
   } catch (err) {
-    if (seq === searchSeq) toast(`Modrinth: ${cleanError(err)}`);
+    if (seq === modSeq) toast(`Modrinth: ${cleanError(err)}`);
   } finally {
-    if (seq === searchSeq) { mods.loading = false; renderResults(); }
+    if (seq === modSeq) { mods.loading = false; renderModResults(); }
   }
 }
 
 async function installMod(id) {
+  if (!modsAllowed()) { toast('Pick Fabric, FPS Boost or a modpack first - vanilla Minecraft cannot load mods.'); return; }
   mods.busy.add(id);
-  renderResults();
+  renderModResults();
   try {
-    const names = await api.installMod({ mcVersion: mcVersion(), projectId: id });
-    if (names.length > 1) appendLog(`[TTT Client] Installed ${names.join(', ')}\n`);
+    const names = await api.installMod({ target: target(), projectId: id });
+    if (names.length > 1) appendLog(`[tatnat launcher] Installed ${names.join(', ')}\n`);
+    if (editingBoost()) {
+      const m = mods.results.find(r => r.id === id);
+      if (m) { await api.addBoostMod(m); toast(`${m.title} added to your FPS Boost pack - it installs on every version.`); renderBoostPack(); }
+    }
   } catch (err) {
     toast(cleanError(err));
   } finally {
     mods.busy.delete(id);
-    await loadInstalled();
+    await loadInstalledMods();
   }
 }
 
-// Reload the Mods tab when it's shown for a different Minecraft version.
+async function addModFiles(files) {
+  if (!modsAllowed()) { toast('Pick Fabric, FPS Boost or a modpack first - vanilla Minecraft cannot load mods.'); return; }
+  try {
+    const added = await api.addMods({ target: target(), files });
+    if (added.length) toast(`Added ${added.length} mod${added.length === 1 ? '' : 's'}: ${added.join(', ')}`);
+    else if (files) toast('Only .jar files can be added as mods.');
+  } catch (err) {
+    toast(cleanError(err));
+  }
+  await loadInstalledMods();
+}
+
 function refreshMods() {
-  const v = mcVersion();
-  $('modsTarget').textContent = `Fabric · Minecraft ${v}`;
-  if (mods.loadedFor === v) return;
-  mods.loadedFor = v;
-  loadInstalled();
+  $('modsTarget').textContent = targetLabel() + (editingBoost() ? ' · mods you add join your FPS Boost pack' : '');
+  $('fabricBanner').hidden = modsAllowed();
+  const key = targetKey();
+  if (mods.loadedFor === key) return;
+  mods.loadedFor = key;
+  loadInstalledMods();
   searchMods();
 }
 
-let searchTimer;
-$('modSearch').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => { mods.query = $('modSearch').value.trim(); searchMods(); }, 350);
+debounceInput('modSearch', q => { mods.query = q; searchMods(); });
+wireSegmented('modsView', { browse: 'modsBrowse', installed: 'modsInstalled' });
+$('addModFiles').addEventListener('click', () => addModFiles(null));
+$('openModsFolder').addEventListener('click', () => api.openModsFolder({ target: target() }));
+api.onModStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
+
+// ---------- texture packs ----------
+const packs = { query: '', offset: 0, total: 0, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null };
+
+function renderPackResults() {
+  const list = $('packResults');
+  list.replaceChildren();
+  if (!packs.results.length) {
+    list.append(listMessage(packs.loading ? 'Searching…' : `No texture packs found for Minecraft ${mcVersion()}.`));
+    return;
+  }
+  const have = new Set(packs.installed.map(p => p.id).filter(Boolean));
+  for (const p of packs.results) {
+    const card = document.createElement('div');
+    card.className = 'mod-card';
+    const state = packs.busy.has(p.id) ? 'busy' : have.has(p.id) ? 'done' : 'idle';
+    card.append(modIcon(p.icon), modBody(p.title, p.slug, `by ${p.author}`, p.description, `${fmt(p.downloads)} downloads`, 'resourcepack'),
+      actionButton(state, () => installPack(p.id)));
+    list.append(card);
+  }
+  if (packs.results.length < packs.total) list.append(loadMoreButton(() => searchPacks(true)));
+}
+
+function renderInstalledPacks() {
+  const list = $('packsList');
+  list.replaceChildren();
+  $('packsCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
+  setBadge('packsBadge', packs.installed.filter(p => p.enabled).length);
+  if (!packs.installed.length) { list.append(listMessage('No texture packs yet. Install one, or add your own .zip.')); return; }
+  for (const p of packs.installed) {
+    const card = document.createElement('div');
+    card.className = `mod-card${p.enabled ? '' : ' disabled'}`;
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'switch';
+    toggle.checked = p.enabled;
+    toggle.title = p.enabled ? 'On' : 'Off';
+    toggle.addEventListener('change', async () => {
+      await api.togglePack({ target: target(), name: p.name, enabled: toggle.checked });
+      await loadInstalledPacks();
+    });
+    const remove = document.createElement('button');
+    remove.className = 'remove-btn';
+    remove.title = 'Remove texture pack';
+    remove.textContent = '✕';
+    remove.addEventListener('click', async () => {
+      await api.removePack({ target: target(), name: p.name });
+      await loadInstalledPacks();
+    });
+    const meta = [p.versionNumber, p.local ? 'added by you' : ''].filter(Boolean).join(' · ');
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), toggle, remove);
+    list.append(card);
+  }
+}
+
+async function loadInstalledPacks() {
+  packs.installed = await api.listPacks({ target: target() });
+  renderInstalledPacks();
+  renderPackResults();
+}
+
+let packSeq = 0;
+async function searchPacks(append = false) {
+  const seq = ++packSeq;
+  if (!append) { packs.offset = 0; packs.results = []; packs.loading = true; renderPackResults(); }
+  try {
+    const res = await api.searchPacks({ query: packs.query, mcVersion: mcVersion(), offset: packs.offset });
+    if (seq !== packSeq) return;
+    packs.total = res.total;
+    packs.results = append ? [...packs.results, ...res.hits] : res.hits;
+    packs.offset = packs.results.length;
+  } catch (err) {
+    if (seq === packSeq) toast(`Modrinth: ${cleanError(err)}`);
+  } finally {
+    if (seq === packSeq) { packs.loading = false; renderPackResults(); }
+  }
+}
+
+async function installPack(id) {
+  packs.busy.add(id);
+  renderPackResults();
+  try {
+    const title = await api.installPack({ target: target(), projectId: id });
+    toast(`${title} installed and switched on.`);
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    packs.busy.delete(id);
+    await loadInstalledPacks();
+  }
+}
+
+async function addPackFiles(files) {
+  try {
+    const added = await api.addPacks({ target: target(), files });
+    if (added.length) toast(`Added and switched on: ${added.join(', ')}`);
+    else if (files) toast('Texture packs are .zip files.');
+  } catch (err) {
+    toast(cleanError(err));
+  }
+  await loadInstalledPacks();
+}
+
+function refreshPacks() {
+  $('packsTarget').textContent = targetLabel();
+  const key = targetKey();
+  if (packs.loadedFor === key) return;
+  packs.loadedFor = key;
+  loadInstalledPacks();
+  searchPacks();
+}
+
+debounceInput('packSearch', q => { packs.query = q; searchPacks(); });
+wireSegmented('packsView', { browse: 'packsBrowse', installed: 'packsInstalled' });
+$('addPackFiles').addEventListener('click', () => addPackFiles(null));
+$('openPacksFolder').addEventListener('click', () => api.openPacksFolder({ target: target() }));
+
+// ---------- modpacks ----------
+const mp = { query: '', offset: 0, total: 0, results: [], busy: new Set(), loading: false, searched: false };
+
+function packTile(pack, el = document.createElement('div')) {
+  el.className = 'pack-tile';
+  el.textContent = '';
+  el.style.backgroundImage = '';
+  if (pack.icon) { el.classList.add('img'); el.style.backgroundImage = `url("${pack.icon}")`; }
+  else el.textContent = (pack.name.trim()[0] || '?').toUpperCase();
+  return el;
+}
+
+function renderPackChip() {
+  const pack = activePack();
+  $('dock').classList.toggle('pack-mode', !!pack);
+  if (!pack) return;
+  packTile(pack, $('packChipTile'));
+  $('packChipName').textContent = pack.name;
+  $('packChipSub').textContent = `Fabric · Minecraft ${pack.mcVersion} · ${pack.modCount} mod${pack.modCount === 1 ? '' : 's'}`;
+}
+
+function setActivePack(id) {
+  settings.activePack = id;
+  api.setSettings({ activePack: id });
+  targetChanged();
+  renderModpacks();
+}
+
+const ICONS = {
+  edit: 'M4 20h4L18.5 9.5a2.1 2.1 0 00-4-4L4 16v4zM13.5 6.5l4 4',
+  export: 'M12 3v12M7 8l5-5 5 5M5 21h14',
+  folder: 'M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+};
+
+function renderModpacks() {
+  const grid = $('modpackGrid');
+  grid.replaceChildren();
+  setBadge('modpacksBadge', modpackList.length);
+  for (const pack of modpackList) {
+    const card = document.createElement('div');
+    card.className = `pack-card${pack.id === settings.activePack ? ' active' : ''}`;
+    const top = document.createElement('div');
+    top.className = 'pack-card-top';
+    const text = document.createElement('div');
+    text.style.minWidth = '0';
+    const h = document.createElement('h4');
+    h.textContent = pack.name;
+    const p = document.createElement('p');
+    p.textContent = `Minecraft ${pack.mcVersion} · ${pack.modCount} mod${pack.modCount === 1 ? '' : 's'}`;
+    text.append(h, p);
+    top.append(packTile(pack), text);
+
+    const actions = document.createElement('div');
+    actions.className = 'pack-card-actions';
+    const play = document.createElement('button');
+    play.className = 'install-btn';
+    play.textContent = 'Play';
+    play.addEventListener('click', () => { setActivePack(pack.id); showTab('play'); $('play').click(); });
+    actions.append(play,
+      iconButton('Edit mods & texture packs', ICONS.edit, () => { setActivePack(pack.id); showTab('mods'); }),
+      iconButton('Export as .mrpack', ICONS.export, () => exportModpack(pack)),
+      iconButton('Open folder', ICONS.folder, () => api.openModpackFolder({ id: pack.id })),
+      iconButton('Delete modpack', ICONS.trash, () => deleteModpack(pack), true));
+    card.append(top, actions);
+    grid.append(card);
+  }
+  const create = document.createElement('button');
+  create.className = 'pack-card pack-new';
+  create.innerHTML = '<span class="plus">+</span><span>New modpack</span>';
+  create.addEventListener('click', openNewPack);
+  grid.append(create);
+}
+
+async function loadModpacks() {
+  modpackList = await api.listModpacks();
+  if (settings.activePack && !activePack()) { settings.activePack = null; api.setSettings({ activePack: null }); targetChanged(); }
+  renderModpacks();
+  renderPackChip();
+  updateHero();
+}
+
+async function exportModpack(pack) {
+  try {
+    const res = await api.exportModpack({ id: pack.id });
+    if (res) toast(`Exported ${pack.name}: ${res.linked} mods linked to Modrinth, ${res.bundled} bundled.`);
+  } catch (err) {
+    toast(cleanError(err));
+  }
+}
+
+async function deleteModpack(pack) {
+  if (!confirm(`Delete "${pack.name}"? Its mods, settings and worlds are removed for good.`)) return;
+  await api.deleteModpack({ id: pack.id });
+  if (settings.activePack === pack.id) setActivePack(null);
+  await loadModpacks();
+}
+
+async function importModpacks(files) {
+  toast('Importing modpack…');
+  try {
+    const imported = await api.importModpacks({ files });
+    if (!imported.length) { $('toast').hidden = true; return; }
+    await loadModpacks();
+    setActivePack(imported[imported.length - 1].id);
+    toast(`Imported ${imported.map(p => p.name).join(', ')}.`);
+  } catch (err) {
+    toast(cleanError(err));
+  }
+}
+
+// Modrinth modpacks
+function renderModpackResults() {
+  const list = $('modpackResults');
+  list.replaceChildren();
+  if (!mp.results.length) { list.append(listMessage(mp.loading ? 'Searching…' : 'No Fabric modpacks found.')); return; }
+  for (const p of mp.results) {
+    const card = document.createElement('div');
+    card.className = 'mod-card';
+    const owned = modpackList.some(x => x.source?.projectId === p.id);
+    const state = mp.busy.has(p.id) ? 'busy' : owned ? 'done' : 'idle';
+    card.append(modIcon(p.icon), modBody(p.title, p.slug, `by ${p.author}`, p.description, `${fmt(p.downloads)} downloads`, 'modpack'),
+      actionButton(state, () => installModrinthPack(p), { done: 'Added ✓' }));
+    list.append(card);
+  }
+  if (mp.results.length < mp.total) list.append(loadMoreButton(() => searchModpacks(true)));
+}
+
+let mpSeq = 0;
+async function searchModpacks(append = false) {
+  const seq = ++mpSeq;
+  mp.searched = true;
+  if (!append) { mp.offset = 0; mp.results = []; mp.loading = true; renderModpackResults(); }
+  try {
+    const res = await api.searchModpacks({ query: mp.query, offset: mp.offset });
+    if (seq !== mpSeq) return;
+    mp.total = res.total;
+    mp.results = append ? [...mp.results, ...res.hits] : res.hits;
+    mp.offset = mp.results.length;
+  } catch (err) {
+    if (seq === mpSeq) toast(`Modrinth: ${cleanError(err)}`);
+  } finally {
+    if (seq === mpSeq) { mp.loading = false; renderModpackResults(); }
+  }
+}
+
+async function installModrinthPack(p) {
+  mp.busy.add(p.id);
+  renderModpackResults();
+  try {
+    const meta = await api.installModpack({ projectId: p.id });
+    await loadModpacks();
+    setActivePack(meta.id);
+    toast(`${meta.name} is ready - press Play.`);
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    mp.busy.delete(p.id);
+    renderModpackResults();
+  }
+}
+
+debounceInput('modpackSearch', q => { mp.query = q; searchModpacks(); });
+wireSegmented('modpacksView', { mine: 'modpacksMine', browse: 'modpacksBrowse' });
+document.querySelector('#modpacksView [data-view="browse"]').addEventListener('click', () => { if (!mp.searched) searchModpacks(); });
+$('importModpack').addEventListener('click', () => importModpacks(null));
+$('newModpack').addEventListener('click', openNewPack);
+$('editPack').addEventListener('click', () => showTab('mods'));
+$('leavePack').addEventListener('click', () => setActivePack(null));
+api.onModpackStatus(s => {
+  if (!$('newPackModal').hidden) { $('newPackStatus').hidden = false; $('newPackStatus').textContent = s; }
+  appendLog(`[tatnat launcher] ${s}\n`);
 });
 
-document.querySelectorAll('#modsView button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('#modsView button').forEach(x => x.classList.toggle('on', x === b));
-  $('modsBrowse').hidden = b.dataset.view !== 'browse';
-  $('modsInstalled').hidden = b.dataset.view !== 'installed';
-}));
+// New modpack dialog
+function openNewPack() {
+  const select = $('newPackVersion');
+  select.replaceChildren();
+  for (const v of versionData.versions.filter(v => v.type === 'release')) {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = v.id === versionData.latest.release ? `${v.id} (latest)` : v.id;
+    select.append(opt);
+  }
+  select.value = versionData.latest.release;
+  $('newPackName').value = '';
+  $('newPackStatus').hidden = true;
+  $('newPackCreate').disabled = false;
+  $('newPackModal').hidden = false;
+  $('newPackName').focus();
+}
 
-$('openModsFolder').addEventListener('click', () => api.openModsFolder({ mcVersion: mcVersion() }));
-api.onModStatus(s => appendLog(`[TTT Client] ${s}\n`));
+$('newPackCancel').addEventListener('click', () => { $('newPackModal').hidden = true; });
+$('newPackForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('newPackCreate').disabled = true;
+  $('newPackStatus').hidden = false;
+  $('newPackStatus').textContent = 'Setting up Fabric…';
+  try {
+    const meta = await api.createModpack({
+      name: $('newPackName').value.trim() || 'My modpack',
+      mcVersion: $('newPackVersion').value,
+      boost: $('newPackBoost').checked,
+    });
+    $('newPackModal').hidden = true;
+    await loadModpacks();
+    setActivePack(meta.id);
+    showTab('mods');
+    toast(`${meta.name} created - add mods, then press Play.`);
+  } catch (err) {
+    $('newPackStatus').textContent = cleanError(err);
+    $('newPackCreate').disabled = false;
+  }
+});
+
+// ---------- drag & drop (mods, texture packs, modpacks) ----------
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+document.addEventListener('dragenter', e => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('dragging'); } });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+document.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  const files = [...e.dataTransfer.files].map(f => api.pathForFile(f)).filter(Boolean);
+  if (!files.length) return;
+  const jars = files.filter(f => /\.jar$/i.test(f));
+  const zips = files.filter(f => /\.zip$/i.test(f));
+  const mrpacks = files.filter(f => /\.mrpack$/i.test(f));
+  // Route by file type, whatever tab you're on.
+  if (mrpacks.length) importModpacks(mrpacks);
+  if (jars.length) { showTab('mods'); addModFiles(jars); }
+  if (zips.length) { showTab('packs'); addPackFiles(zips); }
+  if (!jars.length && !zips.length && !mrpacks.length) toast('Drop .jar mods, .zip texture packs or .mrpack modpacks.');
+});
 
 // ---------- credits / external links ----------
 document.querySelectorAll('[data-link]').forEach(b => b.addEventListener('click', () => api.openExternal(b.dataset.link)));
+
+// ---------- FPS Boost pack (Settings) ----------
+async function renderBoostPack() {
+  const { builtins, disabled, extra } = await api.getBoost();
+  const list = $('boostPack');
+  list.replaceChildren();
+  const off = new Set(disabled);
+  const row = (icon, title, sub, control) => {
+    const r = document.createElement('div');
+    r.className = 'boost-row';
+    const text = document.createElement('div');
+    text.className = 'boost-text';
+    const t = document.createElement('strong');
+    t.textContent = title;
+    const d = document.createElement('span');
+    d.textContent = sub;
+    text.append(t, d);
+    r.append(icon, text, control);
+    list.append(r);
+  };
+  for (const m of builtins) {
+    const sw = document.createElement('input');
+    sw.type = 'checkbox';
+    sw.className = 'switch';
+    sw.checked = !off.has(m.slug);
+    sw.addEventListener('change', async () => { await api.setBoostBuiltin({ slug: m.slug, enabled: sw.checked }); mods.loadedFor = null; renderBoostPack(); });
+    const tag = document.createElement('span');
+    tag.className = 'boost-tag';
+    tag.textContent = '⚡';
+    row(tag, m.title, m.what, sw);
+  }
+  for (const m of extra) {
+    const x = document.createElement('button');
+    x.className = 'remove-btn';
+    x.title = 'Take out of the FPS Boost pack';
+    x.textContent = '✕';
+    x.addEventListener('click', async () => { await api.removeBoostMod({ id: m.id, slug: m.slug }); renderBoostPack(); });
+    const img = modIcon(m.icon);
+    img.classList.add('small');
+    row(img, m.title, 'Added by you', x);
+  }
+  $('boostCount').textContent = `${builtins.length - off.size + extra.length} mods`;
+}
+$('boostAddMods').addEventListener('click', () => { setLoader('boost'); showTab('mods'); });
 
 // ---------- Discord ----------
 const DISCORD_STATUS = {
@@ -584,8 +1068,10 @@ setInterval(() => { if ($('tab-settings').classList.contains('active')) renderDi
   $('closeOnLaunch').checked = !!settings.closeOnLaunch;
   renderAccounts();
   renderDiscord();
+  renderBoostPack();
   moveIndicator();
   api.appVersion().then(v => { $('appVersion').textContent = `v${v}`; });
   await loadVersions();
-  loadInstalled();
+  await loadModpacks();
+  targetChanged();
 })();

@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 
-const USER_AGENT = 'TTTClient/0.1';
+const USER_AGENT = 'tatnatlauncher/0.3';
 
 async function exists(file) {
   try { await fsp.access(file); return true; } catch { return false; }

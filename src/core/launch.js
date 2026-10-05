@@ -7,8 +7,8 @@ const { spawn } = require('child_process');
 const { getManifest, resolveVersion, rulesAllow } = require('./versions');
 const { installVersion } = require('./install');
 
-const LAUNCHER_NAME = 'TTTClient';
-const LAUNCHER_VERSION = '0.2.0';
+const LAUNCHER_NAME = 'tatnatlauncher';
+const LAUNCHER_VERSION = '0.3.0';
 
 // Tuned for a smooth client: short G1 pauses, a young generation sized for Minecraft's
 // short-lived allocations, no System.gc() stalls. IgnoreUnrecognizedVMOptions keeps the
