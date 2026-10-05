@@ -13,6 +13,20 @@ let loginDismissed = false;
 // Electron wraps errors from the main process; show only the useful part.
 const cleanError = err => String(err?.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 
+// Lists are rebuilt whenever something changes (e.g. a button turns into "Installed ✓").
+// Keep the reader's scroll position and don't replay the entrance animation for those
+// refreshes; a list that only held a message (new search, first load) still animates in.
+function resetList(list) {
+  const top = list.scrollTop;
+  const refresh = !!list.querySelector('.mod-card, .pack-card, .account-row, .boost-row');
+  list.replaceChildren();
+  if (refresh) list.dataset.quiet = '1';
+  requestAnimationFrame(() => {
+    list.scrollTop = top;
+    delete list.dataset.quiet;
+  });
+}
+
 // ---------- tabs ----------
 function showTab(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -108,7 +122,7 @@ function renderAccounts() {
   $('cardType').textContent = active ? (active.type === 'microsoft' ? 'Microsoft account' : 'Offline account') : 'Sign in to play';
 
   const list = $('accountList');
-  list.replaceChildren();
+  resetList(list);
   if (!accountData.accounts.length) {
     const p = document.createElement('p');
     p.className = 'empty-accounts';
@@ -499,7 +513,7 @@ const mods = { query: '', offset: 0, total: 0, results: [], installed: new Map()
 
 function renderModResults() {
   const list = $('modResults');
-  list.replaceChildren();
+  resetList(list);
   if (!mods.results.length) {
     list.append(listMessage(mods.loading ? 'Searching…' : `No Fabric mods found for Minecraft ${mcVersion()}.`));
     return;
@@ -517,7 +531,7 @@ function renderModResults() {
 
 function renderInstalledMods() {
   const list = $('installedList');
-  list.replaceChildren();
+  resetList(list);
   $('installedCount').textContent = mods.installed.size ? `(${mods.installed.size})` : '';
   setBadge('modsBadge', mods.installed.size);
   if (!mods.installed.size) { list.append(listMessage(`No mods here yet. Install some, or add your own .jar files.`)); return; }
@@ -625,7 +639,7 @@ const packs = { source: 'modrinth', query: '', offset: 0, total: 0, cursor: null
 
 function renderPackResults() {
   const list = $('packResults');
-  list.replaceChildren();
+  resetList(list);
   if (!packs.results.length) {
     list.append(listMessage(packs.loading ? 'Searching…' : packs.source === 'packsmc' ? 'No PacksMC packs found.' : `No texture packs found for Minecraft ${mcVersion()}.`));
     return;
@@ -655,7 +669,7 @@ function renderPackResults() {
 
 function renderInstalledPacks() {
   const list = $('packsList');
-  list.replaceChildren();
+  resetList(list);
   $('packsCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
   setBadge('packsBadge', packs.installed.filter(p => p.enabled).length);
   if (!packs.installed.length) { list.append(listMessage('No texture packs yet. Install one, or add your own .zip.')); return; }
@@ -843,7 +857,7 @@ const ICONS = {
 
 function renderModpacks() {
   const grid = $('modpackGrid');
-  grid.replaceChildren();
+  resetList(grid);
   setBadge('modpacksBadge', modpackList.length);
   for (const pack of modpackList) {
     const card = document.createElement('div');
@@ -920,7 +934,7 @@ async function importModpacks(files) {
 // Modrinth modpacks
 function renderModpackResults() {
   const list = $('modpackResults');
-  list.replaceChildren();
+  resetList(list);
   if (!mp.results.length) { list.append(listMessage(mp.loading ? 'Searching…' : 'No Fabric modpacks found.')); return; }
   for (const p of mp.results) {
     const card = document.createElement('div');
@@ -1050,7 +1064,7 @@ document.querySelectorAll('[data-link]').forEach(b => b.addEventListener('click'
 async function renderBoostPack() {
   const { builtins, disabled, extra } = await api.getBoost();
   const list = $('boostPack');
-  list.replaceChildren();
+  resetList(list);
   const off = new Set(disabled);
   const row = (icon, title, sub, control) => {
     const r = document.createElement('div');

@@ -131,6 +131,7 @@
 
   // ---------- staggered entrance for list items ----------
   const stagger = list => {
+    if (list.dataset.quiet) { [...list.children].forEach(ch => { ch.dataset.in = '1'; }); return; } // a refresh, not new content
     [...list.children].forEach((child, i) => {
       if (child.dataset.in) return;
       child.dataset.in = '1';
