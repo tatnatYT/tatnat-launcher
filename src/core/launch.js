@@ -1,4 +1,4 @@
-﻿// Builds the Java command line and starts the game.
+// Builds the Java command line and starts the game.
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
