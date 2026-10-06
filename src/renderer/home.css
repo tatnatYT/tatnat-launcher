@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Calm home: no moving backdrop, no pixel scene. A plain dark app background,
+   a normal heading and the play controls in an ordinary panel.
+   Loaded last, so it overrides style.css / cool.css.
+   ========================================================================== */
+
+/* Static background everywhere (the aurora used to drift behind every tab). */
+body { background: #101216; }
+body::before, body::after { display: none; animation: none; }
+main::before { display: none; }
+
+/* ---------- Play tab ---------- */
+#tab-play.active {
+  display: flex; flex-direction: column; justify-content: flex-start;
+  padding: 40px 48px 32px; gap: 24px; overflow-y: auto;
+}
+
+#tab-play .hero-text {
+  padding: 0; animation: none; text-shadow: none;
+}
+#tab-play .hero-text h1 {
+  font-family: Inter, system-ui, sans-serif; font-weight: 700; font-size: 28px;
+  letter-spacing: -.01em; margin: 0 0 6px; color: #fff; text-shadow: none;
+}
+#tab-play .hero-text p { font-size: 14px; color: var(--muted); }
+.mc-splash { display: none; }
+
+/* The play controls: a normal panel in the page, not a bar floating over a picture. */
+#tab-play .dock {
+  position: static; left: auto; right: auto; bottom: auto;
+  animation: none; margin-top: auto;
+  padding: 20px; border-radius: 12px;
+  background: #181b21; border: 1px solid rgba(255, 255, 255, .06);
+  box-shadow: none; backdrop-filter: none;
+}
+
+/* Quick links: an ordinary menu of the main things to do. */
+.home-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.home-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+  padding: 18px; border-radius: 12px; cursor: pointer; color: var(--text); font: inherit;
+  background: #181b21; border: 1px solid rgba(255, 255, 255, .06);
+  transition: background .15s, border-color .15s;
+}
+.home-tile:hover { background: #1e2229; border-color: rgba(255, 255, 255, .12); }
+.home-tile svg { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 8px; }
+.home-tile strong { font-size: 15px; }
+.home-tile span { font-size: 13px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  #tab-play.active { padding: 24px 16px; }
+}

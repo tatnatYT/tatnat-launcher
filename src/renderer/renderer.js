@@ -35,6 +35,7 @@ function showTab(name) {
   if (name === 'console') $('logDot').hidden = true;
   if (name === 'mods') refreshMods();
   if (name === 'packs') refreshPacks();
+  if (name === 'shaders') refreshShaders();
   if (name === 'modpacks') loadModpacks();
   if (name === 'skins') window.onSkinsTab?.();
   api.setPresenceView({ tab: name });
@@ -400,11 +401,13 @@ const editingBoost = () => !activePack() && settings.loader === 'boost';
 function targetChanged() {
   mods.loadedFor = null;
   packs.loadedFor = null;
+  shaderState.loadedFor = null;
   renderPackChip();
   updateHero();
   $('fabricBanner').hidden = modsAllowed();
   if ($('tab-mods').classList.contains('active')) refreshMods();
   if ($('tab-packs').classList.contains('active')) refreshPacks();
+  if ($('tab-shaders').classList.contains('active')) refreshShaders();
   loadInstalledMods(); // keeps the menu badges in step
   loadInstalledPacks();
 }
@@ -637,6 +640,7 @@ api.onModStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
 
 // ---------- texture packs ----------
 const packs = { source: 'modrinth', query: '', offset: 0, total: 0, cursor: null, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null, pmcKey: false };
+const shaderState = { query: '', offset: 0, total: 0, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null };
 
 function renderPackResults() {
   const list = $('packResults');
@@ -816,6 +820,133 @@ async function addPackFiles(files) {
   }
   await loadInstalledPacks();
 }
+
+// ---------- shaders ----------
+const shadersSupported = () => !!activePack() || settings.loader !== 'vanilla';
+
+function renderShaderResults() {
+  const list = $('shaderResults');
+  resetList(list);
+  if (!shaderState.results.length) {
+    list.append(listMessage(shaderState.loading ? 'Searching…' : 'No shaders found.'));
+    return;
+  }
+  const have = new Set(shaderState.installed.map(p => p.id).filter(Boolean));
+  for (const p of shaderState.results) {
+    const card = document.createElement('div');
+    card.className = 'mod-card';
+    const state = shaderState.busy.has(p.id) ? 'busy' : have.has(p.id) ? 'done' : 'idle';
+    const body = modBody(p.title, p.slug, p.author ? `by ${p.author}` : '', p.description, `${fmt(p.downloads)} downloads`, 'shader');
+    card.append(modIcon(p.icon), body, actionButton(state, () => installShader(p.id)));
+    list.append(card);
+  }
+  if (shaderState.results.length < shaderState.total) list.append(loadMoreButton(() => searchShaders(true)));
+}
+
+function renderInstalledShaders() {
+  const list = $('shadersList');
+  resetList(list);
+  $('shadersCount').textContent = shaderState.installed.length ? `(${shaderState.installed.length})` : '';
+  setBadge('shadersBadge', shaderState.installed.some(p => p.enabled) ? 1 : 0);
+  if (!shaderState.installed.length) { list.append(listMessage('No shaders yet. Install one, or add your own .zip.')); return; }
+  for (const p of shaderState.installed) {
+    const card = document.createElement('div');
+    card.className = `mod-card${p.enabled ? '' : ' disabled'}`;
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'switch';
+    toggle.checked = p.enabled;
+    toggle.title = p.enabled ? 'Active' : 'Use this shader';
+    toggle.addEventListener('change', async () => {
+      // Only one shader can be active: switching one on switches the others off.
+      await api.setShader({ target: target(), name: toggle.checked ? p.name : null });
+      await loadInstalledShaders();
+    });
+    const remove = document.createElement('button');
+    remove.className = 'remove-btn';
+    remove.title = 'Remove shader';
+    remove.textContent = '✕';
+    remove.addEventListener('click', async () => {
+      await api.removeShader({ target: target(), name: p.name });
+      await loadInstalledShaders();
+    });
+    const meta = [p.versionNumber, p.local ? 'added by you' : 'from Modrinth', p.enabled ? 'active' : ''].filter(Boolean).join(' · ');
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), toggle, remove);
+    list.append(card);
+  }
+}
+
+async function loadInstalledShaders() {
+  try {
+    shaderState.installed = await api.listShaders({ target: target() });
+  } catch {
+    shaderState.installed = [];
+  }
+  renderInstalledShaders();
+  renderShaderResults();
+}
+
+let shaderSeq = 0;
+async function searchShaders(append = false) {
+  const seq = ++shaderSeq;
+  if (!append) { shaderState.offset = 0; shaderState.results = []; shaderState.loading = true; renderShaderResults(); }
+  try {
+    const res = await api.searchShaders({ query: shaderState.query, offset: shaderState.offset });
+    if (seq !== shaderSeq) return;
+    shaderState.total = res.total;
+    shaderState.results = append ? [...shaderState.results, ...res.hits] : res.hits;
+    shaderState.offset = shaderState.results.length;
+  } catch (err) {
+    if (seq === shaderSeq) toast(`Modrinth: ${cleanError(err)}`);
+  } finally {
+    if (seq === shaderSeq) { shaderState.loading = false; renderShaderResults(); }
+  }
+}
+
+async function installShader(id) {
+  if (!shadersSupported()) { toast('Shaders need a mod loader: pick Fabric, FPS Boost, NeoForge or Forge on the Play tab.'); return; }
+  shaderState.busy.add(id);
+  renderShaderResults();
+  try {
+    const title = await api.installShader({ target: target(), projectId: id });
+    toast(`${title} installed and switched on.`);
+  } catch (err) {
+    toast(cleanError(err));
+  } finally {
+    shaderState.busy.delete(id);
+    await loadInstalledShaders();
+    loadInstalledMods(); // Iris / Sodium may have been added
+  }
+}
+
+function refreshShaders() {
+  $('shadersTarget').textContent = targetLabel();
+  $('shadersHint').textContent = shadersSupported()
+    ? (settings.loader === 'forge' && !activePack()
+      ? 'Installing a shader also adds Oculus (and Embeddium) to this version, so it just works.'
+      : 'Installing a shader also adds Iris (and Sodium) to this version, so it just works.')
+    : 'Shaders need a mod loader: pick Fabric, FPS Boost, NeoForge or Forge on the Play tab.';
+  const key = targetKey();
+  if (shaderState.loadedFor === key) return;
+  shaderState.loadedFor = key;
+  loadInstalledShaders();
+  if (!shaderState.results.length) searchShaders();
+}
+
+api.onShaderStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
+debounceInput('shaderSearch', q => { shaderState.query = q; searchShaders(); });
+wireSegmented('shadersView', { browse: 'shadersBrowse', installed: 'shadersInstalled' });
+$('addShaderFiles').addEventListener('click', async () => {
+  if (!shadersSupported()) { toast('Shaders need a mod loader: pick Fabric, FPS Boost, NeoForge or Forge on the Play tab.'); return; }
+  try {
+    const added = await api.addShaders({ target: target() });
+    if (added.length) toast(`${added.length === 1 ? added[0] : `${added.length} shaders`} added and switched on.`);
+  } catch (err) {
+    toast(cleanError(err));
+  }
+  await loadInstalledShaders();
+});
+$('openShadersFolder').addEventListener('click', () => api.openShadersFolder({ target: target() }));
 
 function refreshPacks() {
   $('packsTarget').textContent = targetLabel();

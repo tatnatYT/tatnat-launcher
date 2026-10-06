@@ -16,6 +16,7 @@ const modpacks = require('./core/modpacks');
 const { DiscordPresence } = require('./core/discord');
 const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
 const clientMod = require('./core/clientmod');
+const shaders = require('./core/shaders');
 const skins = require('./core/skins');
 const { createUpdater } = require('./updater');
 
@@ -358,6 +359,35 @@ ipcMain.handle('packs:add', async (_e, { target, files }) => {
   return texturePacks.addLocal({ dir: (await resolveTarget(target)).gameDir, files: list });
 });
 ipcMain.handle('packs:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'resourcepacks'));
+
+// ---------- shader packs (Iris / Oculus is added to the instance automatically) ----------
+function shaderLoader(t) {
+  if (t.pack || t.loader === 'fabric' || t.loader === 'boost') return 'fabric';
+  return t.loader === 'forge' || t.loader === 'neoforge' ? t.loader : null;
+}
+ipcMain.handle('shaders:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset, type: 'shader' }));
+ipcMain.handle('shaders:list', async (_e, { target }) => {
+  const t = await resolveTarget(target);
+  return shaders.list({ dir: t.gameDir, loader: shaderLoader(t) });
+});
+ipcMain.handle('shaders:install', async (_e, { target, projectId }) => {
+  const t = await resolveTarget(target);
+  return shaders.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader: shaderLoader(t), onStatus: st => send('shaders:status', st) });
+});
+ipcMain.handle('shaders:setActive', async (_e, { target, name }) => {
+  const t = await resolveTarget(target);
+  return shaders.setActive({ dir: t.gameDir, loader: shaderLoader(t), name });
+});
+ipcMain.handle('shaders:remove', async (_e, { target, name }) => {
+  const t = await resolveTarget(target);
+  return shaders.remove({ dir: t.gameDir, loader: shaderLoader(t), name });
+});
+ipcMain.handle('shaders:add', async (_e, { target, files }) => {
+  const t = await resolveTarget(target);
+  const list = files?.length ? files : await pickFiles('Add shader packs', 'Shader packs', ['zip']);
+  return shaders.addLocal({ dir: t.gameDir, files: list, loader: shaderLoader(t), mcVersion: t.mcVersion, onStatus: st => send('shaders:status', st) });
+});
+ipcMain.handle('shaders:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'shaderpacks'));
 
 // ---------- PacksMC (the player's own API key, encrypted like the account tokens) ----------
 // API keys the player pastes in (PacksMC, CurseForge), encrypted like the account tokens.

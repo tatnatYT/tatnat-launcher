@@ -17,10 +17,11 @@ async function api(pathAndQuery, init = {}) {
 
 const LOADER_NAME = { fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge' };
 
-// type: 'mod', 'resourcepack' or 'modpack' (Fabric). Mods follow the instance's loader.
+// type: 'mod', 'resourcepack', 'shader' or 'modpack' (Fabric). Mods follow the instance's loader.
 async function search({ query = '', mcVersion, offset = 0, limit = 20, type = 'mod', loader = 'fabric' }) {
   const facets = [[`project_type:${type}`]];
-  if (type !== 'resourcepack') facets.push([`categories:${type === 'mod' ? loader : 'fabric'}`]);
+  // Mods follow the loader, modpacks are Fabric; texture and shader packs work with any loader.
+  if (type === 'mod' || type === 'modpack') facets.push([`categories:${type === 'mod' ? loader : 'fabric'}`]);
   if (mcVersion) facets.push([`versions:${mcVersion}`]);
   const params = new URLSearchParams({
     query, offset, limit,

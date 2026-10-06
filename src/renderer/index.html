@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="cool.css">
   <link rel="stylesheet" href="skins.css">
+  <link rel="stylesheet" href="home.css">
 </head>
 <body>
   <aside class="sidebar">
@@ -43,6 +44,11 @@
         <span class="nav-text">Texture Packs</span>
         <span class="nav-badge" id="packsBadge" hidden></span>
         <kbd>Ctrl 4</kbd>
+      </button>
+      <button class="nav-btn" data-tab="shaders">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></span>
+        <span class="nav-text">Shaders</span>
+        <span class="nav-badge" id="shadersBadge" hidden></span>
       </button>
 
       <span class="nav-label">Launcher</span>
@@ -103,10 +109,27 @@
 
   <main>
     <section class="tab active" id="tab-play">
-      <canvas id="scene"></canvas>
       <div class="hero-text">
         <h1 id="heroVersion">Minecraft</h1>
         <p id="heroSub">Pick a version and press play.</p>
+      </div>
+      <div class="home-tiles">
+        <button class="home-tile" data-tab="mods">
+          <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
+          <strong>Mods</strong><span>Add mods from Modrinth</span>
+        </button>
+        <button class="home-tile" data-tab="shaders">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
+          <strong>Shaders</strong><span>Better lighting and water</span>
+        </button>
+        <button class="home-tile" data-tab="packs">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="16" cy="8" r="1.6"/></svg>
+          <strong>Texture Packs</strong><span>Change how blocks look</span>
+        </button>
+        <button class="home-tile" data-tab="skins">
+          <svg viewBox="0 0 24 24"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c0 2-2 3-4 3S8 5 8 3z"/></svg>
+          <strong>Skins</strong><span>Change your skin and cape</span>
+        </button>
       </div>
 
       <div class="dock" id="dock">
@@ -226,6 +249,35 @@
       <div class="mods-installed" id="packsInstalled" hidden>
         <p class="hint">Packs that are switched on load in the game, the bottom one on top.</p>
         <div class="mod-list" id="packsList"></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-shaders">
+      <div class="panel-head">
+        <div>
+          <h2>Shaders</h2>
+          <p class="sub" id="shadersTarget">Minecraft</p>
+        </div>
+        <div class="head-actions">
+          <div class="segmented small" id="shadersView">
+            <button data-view="browse" class="on">Browse</button>
+            <button data-view="installed">Installed <span id="shadersCount"></span></button>
+          </div>
+          <button class="ghost-btn accent" id="addShaderFiles">+ Add shader file</button>
+          <button class="ghost-btn" id="openShadersFolder">Open folder</button>
+        </div>
+      </div>
+      <div class="mods-browse" id="shadersBrowse">
+        <p class="hint" id="shadersHint">Installing a shader also adds Iris (and Sodium) to this version, so it just works.</p>
+        <div class="search">
+          <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <input id="shaderSearch" placeholder="Search Modrinth shaders…" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="mod-list" id="shaderResults"></div>
+      </div>
+      <div class="mods-installed" id="shadersInstalled" hidden>
+        <p class="hint">One shader is active at a time. You can also switch in game: Options, Video Settings, Shader Packs.</p>
+        <div class="mod-list" id="shadersList"></div>
       </div>
     </section>
 
@@ -518,7 +570,6 @@
     </div>
   </div>
 
-  <script src="scene.js"></script>
   <script src="cool.js"></script>
   <script src="vendor/skinview3d.bundle.js"></script>
   <script src="renderer.js"></script>
