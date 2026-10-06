@@ -2,7 +2,9 @@ const { app, BrowserWindow, ipcMain, shell, safeStorage, session, dialog } = req
 const fs = require('fs');
 const path = require('path');
 const { launch, getManifest, offlineUuid } = require('./core/launch');
-const { getLocalVersions } = require('./core/versions');
+const { getLocalVersions, resolveVersion } = require('./core/versions');
+const { installJava } = require('./core/install');
+const forge = require('./core/forge');
 const auth = require('./core/auth');
 const { installFabric, loaderVersionOf } = require('./core/fabric');
 const modrinth = require('./core/modrinth');
@@ -13,6 +15,8 @@ const { watchForZip } = require('./core/downloadwatch');
 const modpacks = require('./core/modpacks');
 const { DiscordPresence } = require('./core/discord');
 const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
+const clientMod = require('./core/clientmod');
+const skins = require('./core/skins');
 const { createUpdater } = require('./updater');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
@@ -22,13 +26,15 @@ const ICON = path.join(__dirname, '..', 'assets', 'icon.ico');
 const SETTINGS_FILE = path.join(ROOT, 'launcher_settings.json');
 const ACCOUNTS_FILE = path.join(ROOT, 'launcher_accounts.json');
 const DEFAULT_SETTINGS = { version: null, versionTypes: ['release'], loader: 'vanilla', activePack: null, memoryMb: 4096, closeOnLaunch: false,
-  discord: true, discordClientId: '', boostDisabled: [], boostExtra: [] };
+  discord: true, discordClientId: '', boostDisabled: [], boostExtra: [], clientMod: true };
 
 let win;
 let game = null;
 
-// Fabric versions each get their own game folder, so mods for one version never break another.
-const instanceDir = mcVersion => path.join(ROOT, 'instances', `fabric-${mcVersion.replace(/[^\w.-]/g, '_')}`);
+// Every loader + version gets its own game folder, so mods for one never break another
+// (and Fabric, Forge and NeoForge mods never mix).
+const instanceDir = (mcVersion, loader = 'fabric') =>
+  path.join(ROOT, 'instances', `${loader === 'forge' || loader === 'neoforge' ? loader : 'fabric'}-${mcVersion.replace(/[^\w.-]/g, '_')}`);
 
 // Electron's own data (incl. the key that encrypts saved logins) lives inside our folder,
 // so renaming the app can never orphan the accounts again.
@@ -170,6 +176,87 @@ ipcMain.handle('settings:set', (_e, settings) => {
 
 ipcMain.handle('accounts:list', () => publicAccounts());
 
+// ---------- skin changer ----------
+// The active Microsoft account with a fresh token, or null for offline / no account.
+async function skinAccount() {
+  const store = readAccounts();
+  let account = store.accounts.find(a => a.id === store.active);
+  if (!account || account.type !== 'microsoft') return null;
+  account = await auth.ensureFresh(account);
+  saveAccount(account);
+  return account;
+}
+
+const skinErr = err => { throw new Error(err instanceof skins.SkinError || err instanceof auth.AuthError ? err.message : `Skin change failed: ${err.message}`); };
+
+ipcMain.handle('skins:state', async () => {
+  const store = readAccounts();
+  const active = store.accounts.find(a => a.id === store.active);
+  const out = { account: active ? { type: active.type, name: active.name } : null, profile: null, profileError: null, library: skins.library(ROOT), defaults: [] };
+  try { out.defaults = await skins.defaults(ROOT); } catch (err) { out.defaultsError = err.message; }
+  try {
+    const acc = await skinAccount();
+    if (acc) out.profile = await skins.profile(acc.accessToken);
+  } catch (err) { out.profileError = err.message; }
+  return out;
+});
+
+// Applies a skin to the real account. source: {libraryId} | {defaultId} | {path} (+ variant).
+ipcMain.handle('skins:apply', async (_e, { libraryId, defaultId, variant }) => {
+  try {
+    const acc = await skinAccount();
+    if (!acc) throw new skins.SkinError('Changing your skin needs a Microsoft account (offline accounts have no skin).');
+    const buf = libraryId ? skins.libraryBuffer(ROOT, libraryId) : skins.defaultBuffer(ROOT, defaultId);
+    await skins.uploadSkin(acc.accessToken, buf, variant);
+    const p = await skins.profile(acc.accessToken);
+    // Keep the sidebar head in sync.
+    if (p.skin?.url) {
+      saveAccount({ ...acc, skinUrl: p.skin.url });
+      send('accounts:changed', publicAccounts());
+    }
+    return p;
+  } catch (err) { return skinErr(err); }
+});
+
+ipcMain.handle('skins:cape', async (_e, capeId) => {
+  try {
+    const acc = await skinAccount();
+    if (!acc) throw new skins.SkinError('Capes need a Microsoft account.');
+    await skins.setCape(acc.accessToken, capeId || null);
+    return await skins.profile(acc.accessToken);
+  } catch (err) { return skinErr(err); }
+});
+
+ipcMain.handle('skins:import', async (_e, { files, variant }) => {
+  const added = [], errors = [];
+  for (const f of files || []) {
+    try {
+      added.push(skins.addToLibrary(ROOT, fs.readFileSync(f), path.basename(f, path.extname(f)), variant));
+    } catch (err) { errors.push(`${path.basename(f)}: ${err.message}`); }
+  }
+  return { added, errors };
+});
+
+ipcMain.handle('skins:pickFiles', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Choose skin files', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Minecraft skin', extensions: ['png'] }] });
+  return r.canceled ? [] : r.filePaths;
+});
+
+// Saves the currently worn skin (from Mojang) into the library.
+ipcMain.handle('skins:saveCurrent', async () => {
+  try {
+    const acc = await skinAccount();
+    if (!acc) throw new skins.SkinError('Sign in with Microsoft first.');
+    const p = await skins.profile(acc.accessToken);
+    if (!p.skin?.texture) throw new skins.SkinError('No skin to save.');
+    const buf = Buffer.from(p.skin.texture.split(',')[1], 'base64');
+    return skins.addToLibrary(ROOT, buf, `${p.name}'s skin`, p.skin.variant);
+  } catch (err) { return skinErr(err); }
+});
+
+ipcMain.handle('skins:update', (_e, { id, changes }) => skins.updateLibrary(ROOT, id, changes));
+ipcMain.handle('skins:remove', (_e, id) => skins.removeFromLibrary(ROOT, id));
+
 ipcMain.handle('accounts:loginMicrosoft', async () => {
   const code = await microsoftLogin();
   const account = await auth.loginWithCode(code);
@@ -223,7 +310,8 @@ async function resolveTarget(t = {}) {
     return { gameDir: modpacks.packDir(ROOT, meta.id), mcVersion: meta.mcVersion, fabric: true, pack: meta };
   }
   const fabric = t.loader === 'fabric' || t.loader === 'boost';
-  return { gameDir: fabric ? instanceDir(t.version) : ROOT, mcVersion: t.version, fabric, pack: null };
+  const forgeLike = t.loader === 'forge' || t.loader === 'neoforge';
+  return { gameDir: fabric || forgeLike ? instanceDir(t.version, t.loader) : ROOT, mcVersion: t.version, fabric, loader: t.loader, pack: null };
 }
 
 async function pickFiles(title, name, extensions) {
@@ -238,11 +326,13 @@ function openSubfolder(dir, sub) {
 }
 
 // ---------- mods (Modrinth + your own jars, Fabric) ----------
-ipcMain.handle('mods:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset, type: 'mod' }));
+ipcMain.handle('mods:search', (_e, { query, mcVersion, offset, loader }) =>
+  modrinth.search({ query, mcVersion, offset, type: 'mod', loader: loader === 'forge' || loader === 'neoforge' ? loader : 'fabric' }));
 ipcMain.handle('mods:list', async (_e, { target }) => modrinth.listInstalled((await resolveTarget(target)).gameDir));
 ipcMain.handle('mods:install', async (_e, { target, projectId }) => {
   const t = await resolveTarget(target);
-  return modrinth.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, onStatus: s => send('mods:status', s) });
+  const loader = t.loader === 'forge' || t.loader === 'neoforge' ? t.loader : 'fabric';
+  return modrinth.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, onStatus: s => send('mods:status', s) });
 });
 ipcMain.handle('mods:remove', async (_e, { target, projectId }) => modrinth.remove({ dir: (await resolveTarget(target)).gameDir, projectId }));
 ipcMain.handle('mods:toggle', async (_e, { target, projectId, enabled }) =>
@@ -487,6 +577,21 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
         gameDir = ROOT;
       }
     }
+    if (!packId && (loader === 'forge' || loader === 'neoforge')) {
+      const label = loader === 'forge' ? 'Forge' : 'NeoForge';
+      send('game:progress', { stage: `Installing ${label}`, done: 0, total: 1 });
+      // The installer needs Java: use the runtime this Minecraft version ships with.
+      const vanilla = await resolveVersion(ROOT, version, await getManifest(ROOT));
+      const javaBin = await installJava(ROOT, vanilla, (stage, done, total) => send('game:progress', { stage, done, total }));
+      versionId = await forge.installLoader({
+        root: ROOT, kind: loader, mcVersion: version, javaBin,
+        onStatus: s => send('game:progress', { stage: s, done: 0, total: 1 }),
+        onLog: text => send('game:log', text),
+      });
+      gameDir = instanceDir(version, loader);
+      const modsFolder = path.join(gameDir, 'mods');
+      playing.modCount = fs.existsSync(modsFolder) ? fs.readdirSync(modsFolder).filter(f => f.endsWith('.jar')).length : 0;
+    }
     if (useFabric) {
       if (loader === 'fabric') {
         send('game:progress', { stage: 'Installing Fabric', done: 0, total: 1 });
@@ -495,6 +600,16 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
       gameDir = instanceDir(version);
       const modsFolder = path.join(gameDir, 'mods');
       playing.modCount = fs.existsSync(modsFolder) ? fs.readdirSync(modsFolder).filter(f => f.endsWith('.jar')).length : 0;
+    }
+    if (gameDir !== ROOT) {
+      // Fabric, FPS Boost or a modpack: add or remove the tatnat client mod to match the setting.
+      try {
+        const r = clientMod.sync({ gameDir, mcVersion: playing.version, loader: playing.loader, enabled: readSettings().clientMod !== false });
+        if (r === 'added' || r === 'updated') send('game:log', '[tatnat launcher] tatnat client mod ready: press Right Shift in game\n');
+        if (r === 'removed') send('game:log', '[tatnat launcher] tatnat client mod turned off, removed it\n');
+      } catch (err) {
+        send('game:log', `[tatnat launcher] Could not set up the tatnat client mod: ${err.message}\n`);
+      }
     }
     game = await launch({
       root: ROOT,
@@ -551,6 +666,8 @@ function buildActivity() {
     activity.state = playing.loader === 'modpack' ? `${playing.packName} · ${mods}`
       : playing.loader === 'boost' ? `FPS Boost · ${mods}`
       : playing.loader === 'fabric' ? `Fabric · ${mods}`
+      : playing.loader === 'forge' ? `Forge · ${mods}`
+      : playing.loader === 'neoforge' ? `NeoForge · ${mods}`
       : 'Vanilla';
     activity.timestamps = { start: playing.start };
     activity.assets.small_image = `https://mc-heads.net/avatar/${playing.uuid || encodeURIComponent(playing.name)}/64`;

@@ -1,0 +1,103 @@
+/* ---------- Skins tab ---------- */
+.skins-who { color: var(--muted); font-size: 13px; }
+.skins-banner {
+  margin: 0 32px 12px; padding: 10px 14px; border-radius: 10px; font-size: 13px;
+  background: rgba(226, 87, 76, .12); border: 1px solid rgba(226, 87, 76, .35); color: #f2b8b2;
+}
+.skins {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(280px, 38%) 1fr; gap: 18px;
+  padding: 0 32px 28px;
+}
+
+/* 3D stage */
+.skin-stage {
+  position: relative; min-height: 0; border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse at 50% 92%, rgba(95,191,58,.22), transparent 55%),
+    radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.06), transparent 60%),
+    linear-gradient(180deg, rgba(20,24,31,.92), rgba(12,14,19,.95));
+  backdrop-filter: var(--glass-blur);
+  display: flex; flex-direction: column;
+}
+.skin-stage::after {
+  /* soft floor shadow under the model */
+  content: ''; position: absolute; left: 50%; bottom: 150px; width: 140px; height: 18px; transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); pointer-events: none;
+}
+.skin-canvas-wrap { flex: 1; min-height: 0; position: relative; }
+#skinCanvas { position: absolute; inset: 0; cursor: grab; display: block; }
+#skinCanvas:active { cursor: grabbing; }
+.skin-loading[hidden] { display: none; }
+.skin-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+.skin-stage-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.skin-stage-bottom {
+  display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center;
+  padding: 14px 16px 6px; border-top: 1px solid rgba(255,255,255,.06); background: rgba(10,12,16,.55);
+}
+.skin-stage-bottom b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-stage-bottom > div:first-child { min-width: 0; }
+.skin-stage-bottom span { color: var(--muted); font-size: 12px; }
+.skin-stage-bottom > div:first-child { display: flex; align-items: baseline; gap: 8px; }
+.skin-stage-bottom .seg { justify-self: start; }
+.skin-stage-bottom .wear-btn { grid-column: 1 / -1; }
+.skin-hint { margin: 0; padding: 4px 16px 12px; color: var(--muted); font-size: 11px; background: rgba(10,12,16,.55); }
+
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.08); }
+.seg button {
+  border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+  padding: 6px 10px; border-radius: 7px; cursor: pointer; transition: background .15s, color .15s;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: rgba(95,191,58,.22); color: var(--accent-light); }
+.seg.locked { opacity: .45; pointer-events: none; }
+
+.wear-btn {
+  border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; color: #fff;
+  background: linear-gradient(180deg, #5bb437, #3f8a22); box-shadow: 0 6px 18px rgba(95,191,58,.28);
+  transition: transform .15s, filter .15s, opacity .15s;
+}
+.wear-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.wear-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
+
+/* lists */
+.skin-side { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 4px; }
+.skin-section {
+  border-radius: 14px; padding: 14px 16px 16px; border: 1px solid var(--line);
+  background: linear-gradient(160deg, rgba(255,255,255,.035), rgba(255,255,255,.01)), var(--panel);
+  backdrop-filter: var(--glass-blur);
+}
+.skin-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.skin-section-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.skin-section-head > div { display: flex; gap: 8px; }
+.skin-empty { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+.skin-grid, .cape-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+.cape-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+.skin-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 6px 9px; border-radius: 12px; cursor: pointer; font: inherit; color: var(--text);
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+  transition: transform .15s, border-color .15s, background .15s, box-shadow .15s;
+}
+.skin-tile:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.06); }
+.skin-tile.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(95,191,58,.22); background: rgba(95,191,58,.08); }
+.skin-tile.wearing::before {
+  content: 'ON'; position: absolute; top: 6px; left: 6px; font-size: 9px; font-weight: 800; letter-spacing: .5px;
+  padding: 2px 5px; border-radius: 5px; background: var(--accent); color: #0d1a07;
+}
+.skin-thumb { width: 40px; height: 80px; image-rendering: pixelated; filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+.cape-thumb { width: 40px; height: 64px; image-rendering: pixelated; border-radius: 3px; background: rgba(0,0,0,.25); filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+.skin-tile-label { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skin-tile-sub { font-size: 10px; color: var(--muted); }
+.skin-tile-remove {
+  position: absolute; top: 4px; right: 6px; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
+  color: var(--muted); font-size: 16px; line-height: 1; opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.skin-tile:hover .skin-tile-remove { opacity: 1; }
+.skin-tile-remove:hover { background: rgba(226,87,76,.2); color: #f2b8b2; }
+
+@media (max-width: 900px) {
+  .skins { grid-template-columns: 1fr; overflow: auto; }
+  .skin-stage { min-height: 460px; }
+}

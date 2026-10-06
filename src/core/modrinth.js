@@ -15,10 +15,12 @@ async function api(pathAndQuery, init = {}) {
   return res.json();
 }
 
-// type: 'mod' (Fabric only), 'resourcepack' or 'modpack' (Fabric only).
-async function search({ query = '', mcVersion, offset = 0, limit = 20, type = 'mod' }) {
+const LOADER_NAME = { fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge' };
+
+// type: 'mod', 'resourcepack' or 'modpack' (Fabric). Mods follow the instance's loader.
+async function search({ query = '', mcVersion, offset = 0, limit = 20, type = 'mod', loader = 'fabric' }) {
   const facets = [[`project_type:${type}`]];
-  if (type !== 'resourcepack') facets.push(['categories:fabric']);
+  if (type !== 'resourcepack') facets.push([`categories:${type === 'mod' ? loader : 'fabric'}`]);
   if (mcVersion) facets.push([`versions:${mcVersion}`]);
   const params = new URLSearchParams({
     query, offset, limit,
@@ -78,7 +80,7 @@ function pickVersion(versions) {
   return versions.find(v => v.version_type === 'release') || versions[0];
 }
 
-async function install({ dir, projectId, mcVersion, onStatus = () => {} }) {
+async function install({ dir, projectId, mcVersion, loader = 'fabric', onStatus = () => {} }) {
   const index = await readIndex(dir);
   const seen = new Set();
   const installed = [];
@@ -88,9 +90,9 @@ async function install({ dir, projectId, mcVersion, onStatus = () => {} }) {
     seen.add(id);
     if (isDependency && index[id]) return; // already have some version of it
 
-    const params = new URLSearchParams({ loaders: JSON.stringify(['fabric']), game_versions: JSON.stringify([mcVersion]) });
+    const params = new URLSearchParams({ loaders: JSON.stringify([loader]), game_versions: JSON.stringify([mcVersion]) });
     const [project, versions] = await Promise.all([api(`/project/${id}`), api(`/project/${id}/version?${params}`)]);
-    if (!versions.length) throw new Error(`${project.title} has no Fabric build for Minecraft ${mcVersion}.`);
+    if (!versions.length) throw new Error(`${project.title} has no ${LOADER_NAME[loader] || loader} build for Minecraft ${mcVersion}.`);
     const version = pickVersion(versions);
     const file = version.files.find(f => f.primary) || version.files[0];
 

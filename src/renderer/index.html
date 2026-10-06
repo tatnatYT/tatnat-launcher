@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="cool.css">
+  <link rel="stylesheet" href="skins.css">
 </head>
 <body>
   <aside class="sidebar">
@@ -50,21 +51,26 @@
         <span class="nav-text">Accounts</span>
         <kbd>Ctrl 5</kbd>
       </button>
-      <button class="nav-btn" data-tab="console" data-key="6">
+      <button class="nav-btn" data-tab="skins" data-key="6">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 3h8l4 4-3 3v11H7V10L4 7z"/><path d="M9 3a3 3 0 006 0"/></svg></span>
+        <span class="nav-text">Skins</span>
+        <kbd>Ctrl 6</kbd>
+      </button>
+      <button class="nav-btn" data-tab="console" data-key="7">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg></span>
         <span class="nav-text">Console</span>
         <span class="nav-dot unread" id="logDot" hidden></span>
-        <kbd>Ctrl 6</kbd>
-      </button>
-      <button class="nav-btn" data-tab="settings" data-key="7">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
-        <span class="nav-text">Settings</span>
         <kbd>Ctrl 7</kbd>
       </button>
-      <button class="nav-btn" data-tab="credits" data-key="8">
+      <button class="nav-btn" data-tab="settings" data-key="8">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
+        <span class="nav-text">Settings</span>
+        <kbd>Ctrl 8</kbd>
+      </button>
+      <button class="nav-btn" data-tab="credits" data-key="9">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg></span>
         <span class="nav-text">Credits</span>
-        <kbd>Ctrl 8</kbd>
+        <kbd>Ctrl 9</kbd>
       </button>
     </nav>
 
@@ -131,6 +137,8 @@
           <div class="segmented" id="loader">
             <button data-loader="vanilla">Vanilla</button>
             <button data-loader="fabric">Fabric</button>
+            <button data-loader="forge" title="Minecraft Forge: for Forge mods and modpacks">Forge</button>
+            <button data-loader="neoforge" title="NeoForge (1.20.2 and newer)">NeoForge</button>
             <button data-loader="boost" class="boost" title="Fabric + a performance mod pack, tuned settings and Java flags"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>FPS Boost</button>
           </div>
         </div>
@@ -268,6 +276,69 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-skins">
+      <div class="panel-head">
+        <h2>Skins</h2>
+        <span class="skins-who" id="skinsWho"></span>
+      </div>
+      <p class="skins-banner" id="skinsBanner" hidden></p>
+      <div class="skins">
+        <div class="skin-stage">
+          <div class="skin-canvas-wrap"><canvas id="skinCanvas" aria-label="3D skin preview"></canvas></div>
+          <div class="skin-loading" id="skinLoading">Loading your skin…</div>
+          <div class="skin-stage-top">
+            <div class="seg" id="skinAnim">
+              <button data-anim="idle">Idle</button>
+              <button data-anim="walk" class="on">Walk</button>
+              <button data-anim="run">Run</button>
+              <button data-anim="fly">Fly</button>
+            </div>
+            <div class="seg" id="skinBack">
+              <button data-back="cape" class="on">Cape</button>
+              <button data-back="elytra">Elytra</button>
+            </div>
+          </div>
+          <div class="skin-stage-bottom">
+            <div>
+              <b id="skinPreviewName">Your skin</b>
+              <span id="skinPreviewMeta"></span>
+            </div>
+            <div class="seg" id="skinVariant" title="Arm width">
+              <button data-variant="classic">Classic arms</button>
+              <button data-variant="slim">Slim arms</button>
+            </div>
+            <button class="wear-btn" id="skinWear" disabled>Wear this skin</button>
+          </div>
+          <p class="skin-hint">Drag to turn the model · scroll to zoom</p>
+        </div>
+        <div class="skin-side">
+          <section class="skin-section">
+            <div class="skin-section-head">
+              <h3>Your skins</h3>
+              <div>
+                <button class="ghost-btn" id="skinSaveCurrent" title="Keep the skin you're wearing now in this list">Save current</button>
+                <button class="ghost-btn accent" id="skinUpload">+ Upload</button>
+              </div>
+            </div>
+            <div class="skin-grid" id="skinLibrary"></div>
+            <p class="skin-empty" id="skinLibraryEmpty">Upload a 64x64 skin PNG (or drop one here) to keep it here.</p>
+          </section>
+          <section class="skin-section">
+            <div class="skin-section-head"><h3>Minecraft skins</h3></div>
+            <div class="skin-grid" id="skinDefaults"></div>
+          </section>
+          <section class="skin-section">
+            <div class="skin-section-head">
+              <h3>Capes</h3>
+              <button class="ghost-btn accent" id="capeEquip" disabled>Equip cape</button>
+            </div>
+            <div class="cape-grid" id="skinCapes"></div>
+            <p class="skin-empty" id="skinCapesEmpty" hidden>This account doesn't own any capes yet.</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-console">
       <div class="panel-head">
         <h2>Console</h2>
@@ -298,6 +369,13 @@
             <button class="ghost-btn accent" id="boostAddMods">+ Add mods</button>
           </div>
           <div class="boost-pack" id="boostPack"></div>
+        </div>
+        <div class="setting">
+          <div>
+            <h3>tatnat client mod</h3>
+            <p>In-game mod menu (Right Shift), HUD editor, keystrokes, zoom and more. Added automatically when you play Fabric or FPS Boost on 1.21.11.</p>
+          </div>
+          <input type="checkbox" class="switch" id="clientModOn">
         </div>
         <div class="setting discord-setting">
           <div class="discord-top">
@@ -442,6 +520,8 @@
 
   <script src="scene.js"></script>
   <script src="cool.js"></script>
+  <script src="vendor/skinview3d.bundle.js"></script>
   <script src="renderer.js"></script>
+  <script src="skins.js"></script>
 </body>
 </html>

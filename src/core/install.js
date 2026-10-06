@@ -161,6 +161,20 @@ async function installVersion({ root, gameDir, version, progress = () => {} }) {
     throw new Error(`No client jar available for ${version.id}`);
   }
 
+  // Modern Forge/NeoForge load the game themselves and skip "${version_name}.jar" on the classpath
+  // (their -DignoreList). Like the official launcher, keep a copy under the profile's own id.
+  let classpathJar = clientJar;
+  const jvmArgs = JSON.stringify(version.arguments?.jvm || []);
+  if (jarId !== version.id && jvmArgs.includes('${version_name}.jar')) {
+    classpathJar = path.join(root, 'versions', version.id, `${version.id}.jar`);
+    const src = await fsp.stat(clientJar);
+    const dst = await fsp.stat(classpathJar).catch(() => null);
+    if (!dst || dst.size !== src.size) {
+      await fsp.mkdir(path.dirname(classpathJar), { recursive: true });
+      await fsp.copyFile(clientJar, classpathJar);
+    }
+  }
+
   // Libraries + natives
   const libs = planLibraries(root, version);
   await runPool(libs.downloads.map(d => () => downloadFile(d.url, d.dest, d)), CONCURRENCY,
@@ -185,9 +199,9 @@ async function installVersion({ root, gameDir, version, progress = () => {} }) {
     javaBin,
     nativesDir,
     loggingArg,
-    classpath: [...libs.classpath, clientJar],
+    classpath: [...libs.classpath, classpathJar],
     ...assets,
   };
 }
 
-module.exports = { installVersion, mavenPath };
+module.exports = { installVersion, installJava, mavenPath };

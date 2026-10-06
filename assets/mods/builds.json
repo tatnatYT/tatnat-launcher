@@ -1,0 +1,242 @@
+{
+  "builds": [
+    {
+      "loader": "fabric",
+      "from": "26.3",
+      "until": "26.4",
+      "file": "tatnat-client-mc26.3-1.0.0.jar",
+      "built": "26.3"
+    },
+    {
+      "loader": "fabric",
+      "from": "26.2",
+      "until": "26.3",
+      "file": "tatnat-client-mc26.2-1.0.0.jar",
+      "built": "26.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "26.1",
+      "until": "26.2",
+      "file": "tatnat-client-mc26.1.2-1.0.0.jar",
+      "built": "26.1.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21.11",
+      "until": "1.21.12",
+      "file": "tatnat-client-mc1.21.11-1.0.0.jar",
+      "built": "1.21.11"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21.9",
+      "until": "1.21.11",
+      "file": "tatnat-client-mc1.21.10-1.0.0.jar",
+      "built": "1.21.10"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21.6",
+      "until": "1.21.9",
+      "file": "tatnat-client-mc1.21.8-1.0.0.jar",
+      "built": "1.21.8"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21.5",
+      "until": "1.21.6",
+      "file": "tatnat-client-mc1.21.5-1.0.0.jar",
+      "built": "1.21.5"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21.2",
+      "until": "1.21.5",
+      "file": "tatnat-client-mc1.21.4-1.0.0.jar",
+      "built": "1.21.4"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.21",
+      "until": "1.21.2",
+      "file": "tatnat-client-mc1.21.1-1.0.0.jar",
+      "built": "1.21.1"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.20.5",
+      "until": "1.21",
+      "file": "tatnat-client-mc1.20.6-1.0.0.jar",
+      "built": "1.20.6"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.20.2",
+      "until": "1.20.5",
+      "file": "tatnat-client-mc1.20.4-1.0.0.jar",
+      "built": "1.20.4"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.20",
+      "until": "1.20.2",
+      "file": "tatnat-client-mc1.20.1-1.0.0.jar",
+      "built": "1.20.1"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.19.4",
+      "until": "1.19.5",
+      "file": "tatnat-client-mc1.19.4-1.0.0.jar",
+      "built": "1.19.4"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.19.3",
+      "until": "1.19.4",
+      "file": "tatnat-client-mc1.19.3-1.0.0.jar",
+      "built": "1.19.3"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.19",
+      "until": "1.19.3",
+      "file": "tatnat-client-mc1.19.2-1.0.0.jar",
+      "built": "1.19.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.18.2",
+      "until": "1.18.3",
+      "file": "tatnat-client-mc1.18.2-1.0.0.jar",
+      "built": "1.18.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.18",
+      "until": "1.18.2",
+      "file": "tatnat-client-mc1.18.1-1.0.0.jar",
+      "built": "1.18.1"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.17",
+      "until": "1.18",
+      "file": "tatnat-client-mc1.17.1-1.0.0.jar",
+      "built": "1.17.1"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.16.2",
+      "until": "1.17",
+      "file": "tatnat-client-mc1.16.5-1.0.0.jar",
+      "built": "1.16.5"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.16",
+      "until": "1.16.2",
+      "file": "tatnat-client-mc1.16.1-1.0.0.jar",
+      "built": "1.16.1"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.15",
+      "until": "1.16",
+      "file": "tatnat-client-mc1.15.2-1.0.0.jar",
+      "built": "1.15.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.14.4",
+      "until": "1.14.5",
+      "file": "tatnat-client-mc1.14.4-1.0.0.jar",
+      "built": "1.14.4"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.8.9",
+      "until": "1.8.9.0.1",
+      "file": "tatnat-client-mc1.8.9-1.0.0.jar",
+      "built": "1.8.9"
+    },
+    {
+      "loader": "neoforge",
+      "from": "26.3",
+      "until": "26.4",
+      "file": "tatnat-client-neoforge-mc26.3-1.0.0.jar",
+      "built": "26.3"
+    },
+    {
+      "loader": "neoforge",
+      "from": "26.2",
+      "until": "26.3",
+      "file": "tatnat-client-neoforge-mc26.2-1.0.0.jar",
+      "built": "26.2"
+    },
+    {
+      "loader": "neoforge",
+      "from": "26.1",
+      "until": "26.2",
+      "file": "tatnat-client-neoforge-mc26.1.2-1.0.0.jar",
+      "built": "26.1.2"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21.11",
+      "until": "1.21.12",
+      "file": "tatnat-client-neoforge-mc1.21.11-1.0.0.jar",
+      "built": "1.21.11"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21.9",
+      "until": "1.21.11",
+      "file": "tatnat-client-neoforge-mc1.21.10-1.0.0.jar",
+      "built": "1.21.10"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21.6",
+      "until": "1.21.9",
+      "file": "tatnat-client-neoforge-mc1.21.8-1.0.0.jar",
+      "built": "1.21.8"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21.5",
+      "until": "1.21.6",
+      "file": "tatnat-client-neoforge-mc1.21.5-1.0.0.jar",
+      "built": "1.21.5"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21.2",
+      "until": "1.21.5",
+      "file": "tatnat-client-neoforge-mc1.21.4-1.0.0.jar",
+      "built": "1.21.4"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.21",
+      "until": "1.21.2",
+      "file": "tatnat-client-neoforge-mc1.21.1-1.0.0.jar",
+      "built": "1.21.1"
+    },
+    {
+      "loader": "forge",
+      "from": "1.20",
+      "until": "1.20.2",
+      "file": "tatnat-client-forge-mc1.20.1-1.0.0.jar",
+      "built": "1.20.1"
+    },
+    {
+      "loader": "forge",
+      "from": "1.8.9",
+      "until": "1.8.9.0.1",
+      "file": "tatnat-client-forge-mc1.8.9-1.0.0.jar",
+      "built": "1.8.9"
+    }
+  ]
+}

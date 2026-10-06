@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const api = window.launcher;
 
-const LOADER_SUFFIX = { fabric: ' · Fabric', boost: ' · FPS Boost' };
+const LOADER_SUFFIX = { fabric: ' · Fabric', boost: ' · FPS Boost', forge: ' · Forge', neoforge: ' · NeoForge' };
 const TYPE_LABEL = { release: 'Release', snapshot: 'Snapshot', old_beta: 'Beta', old_alpha: 'Alpha', custom: 'Installed' };
 
 let settings = {};
@@ -36,6 +36,7 @@ function showTab(name) {
   if (name === 'mods') refreshMods();
   if (name === 'packs') refreshPacks();
   if (name === 'modpacks') loadModpacks();
+  if (name === 'skins') window.onSkinsTab?.();
   api.setPresenceView({ tab: name });
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -386,7 +387,7 @@ function target() {
 }
 const targetKey = () => JSON.stringify(target());
 const mcVersion = () => activePack()?.mcVersion || $('version').value;
-const LOADER_NAME = { vanilla: 'Vanilla', fabric: 'Fabric', boost: 'FPS Boost' };
+const LOADER_NAME = { vanilla: 'Vanilla', fabric: 'Fabric', boost: 'FPS Boost', forge: 'Forge', neoforge: 'NeoForge' };
 function targetLabel() {
   const pack = activePack();
   return pack ? `Modpack “${pack.name}” · Minecraft ${pack.mcVersion}` : `${LOADER_NAME[settings.loader]} · Minecraft ${mcVersion()}`;
@@ -575,7 +576,7 @@ async function searchMods(append = false) {
   const seq = ++modSeq;
   if (!append) { mods.offset = 0; mods.results = []; mods.loading = true; renderModResults(); }
   try {
-    const res = await api.searchMods({ query: mods.query, mcVersion: mcVersion(), offset: mods.offset });
+    const res = await api.searchMods({ query: mods.query, mcVersion: mcVersion(), offset: mods.offset, loader: activePack() ? 'fabric' : settings.loader });
     if (seq !== modSeq) return; // a newer search started meanwhile
     mods.total = res.total;
     mods.results = append ? [...mods.results, ...res.hits] : res.hits;
@@ -1121,13 +1122,15 @@ document.addEventListener('drop', e => {
   const jars = files.filter(f => /\.jar$/i.test(f));
   const zips = files.filter(f => /\.zip$/i.test(f));
   const mrpacks = files.filter(f => /\.mrpack$/i.test(f));
+  const pngs = files.filter(f => /\.png$/i.test(f));
+  if (pngs.length) { showTab('skins'); window.importSkinFiles?.(pngs); }
   // Route by file type, whatever tab you're on. A .zip is a texture pack unless it's a CurseForge modpack export.
   api.classifyZips(zips).then(({ modpacks: cfPacks, packs: texturePackZips }) => {
     if (mrpacks.length || cfPacks.length) importModpacks([...mrpacks, ...cfPacks]);
     if (texturePackZips.length) { showTab('packs'); addPackFiles(texturePackZips); }
   });
   if (jars.length) { showTab('mods'); addModFiles(jars); }
-  if (!jars.length && !zips.length && !mrpacks.length) toast('Drop .jar mods, .zip texture packs or .mrpack modpacks.');
+  if (!jars.length && !zips.length && !mrpacks.length && !pngs.length) toast('Drop .jar mods, .zip texture packs, .mrpack modpacks or .png skins.');
 });
 
 // ---------- credits / external links ----------
@@ -1262,6 +1265,16 @@ function renderDiscord() {
   renderDiscordStatus();
 }
 
+function renderClientMod() {
+  $('clientModOn').checked = settings.clientMod !== false;
+}
+
+$('clientModOn').addEventListener('change', async () => {
+  settings.clientMod = $('clientModOn').checked;
+  await api.setSettings({ clientMod: settings.clientMod });
+  toast(settings.clientMod ? 'tatnat client mod on: press Right Shift in game.' : 'tatnat client mod off: it is removed next time you play.');
+});
+
 $('discordOn').addEventListener('change', async () => {
   settings.discord = $('discordOn').checked;
   await api.setSettings({ discord: settings.discord });
@@ -1288,6 +1301,7 @@ setInterval(() => { if ($('tab-settings').classList.contains('active')) renderDi
   $('closeOnLaunch').checked = !!settings.closeOnLaunch;
   renderAccounts();
   renderDiscord();
+  renderClientMod();
   renderBoostPack();
   moveIndicator();
   api.appVersion().then(v => { $('appVersion').textContent = `v${v}`; });
