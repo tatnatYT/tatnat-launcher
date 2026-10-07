@@ -8,6 +8,9 @@ let settings = {};
 let versionData = { latest: {}, versions: [] };
 let accountData = { active: null, accounts: [] };
 let state = 'idle';
+let instances = []; // every game that is starting or running (several can run at once)
+// Update checks for Mods > Installed (per version / modpack).
+const upd = { found: { mod: {}, pack: {}, shader: {} }, checkedFor: null, checking: false, busy: new Set() };
 let loginDismissed = false;
 
 // Electron wraps errors from the main process; show only the useful part.
@@ -73,7 +76,8 @@ function updateStatus() {
     $('statusSub').textContent = progressStage || label;
   } else if (state === 'running') {
     card.classList.add('running');
-    $('statusTitle').textContent = 'Playing';
+    const n = instances.filter(i => i.state === 'running').length;
+    $('statusTitle').textContent = n > 1 ? `Playing · ${n} games open` : 'Playing';
     $('statusSub').textContent = label;
   } else if (!activeAccount()) {
     $('statusTitle').textContent = 'Not signed in';
@@ -275,15 +279,29 @@ async function loadVersions() {
 }
 
 // ---------- play ----------
+// Several games can run at once; the Play button is about the selected version / modpack only.
+const keyFor = (version, loader, packId) => (packId ? `pack:${packId}` : `${loader}:${version}`);
+const currentKey = () => keyFor($('version').value, settings.loader, activePack()?.id || null);
+const instanceFor = key => instances.find(i => i.key === key) || null;
+
 function updatePlayButton() {
   const btn = $('play');
-  btn.classList.toggle('running', state === 'running');
-  btn.textContent = state === 'installing' ? 'LOADING…' : state === 'running' ? 'STOP' : 'PLAY';
-  btn.disabled = state === 'installing';
+  const mine = instanceFor(currentKey());
+  btn.classList.toggle('running', mine?.state === 'running');
+  btn.textContent = mine?.state === 'installing' ? 'LOADING…' : mine?.state === 'running' ? 'STOP' : 'PLAY';
+  btn.disabled = mine?.state === 'installing';
 }
 
+api.onInstances(list => {
+  instances = list;
+  updatePlayButton();
+  updateStatus();
+  renderModpacks();
+});
+
 $('play').addEventListener('click', async () => {
-  if (state === 'running') { api.kill(); return; }
+  const mine = instanceFor(currentKey());
+  if (mine?.state === 'running') { api.kill(mine.key); return; }
   if (!activeAccount()) { loginDismissed = false; renderAccounts(); return; }
   const version = $('version').value;
   if (!version && !activePack()) return;
@@ -404,12 +422,18 @@ function targetChanged() {
   shaderState.loadedFor = null;
   renderPackChip();
   updateHero();
+  updatePlayButton();
   $('fabricBanner').hidden = modsAllowed();
   if ($('tab-mods').classList.contains('active')) refreshMods();
   if ($('tab-packs').classList.contains('active')) refreshPacks();
   if ($('tab-shaders').classList.contains('active')) refreshShaders();
   loadInstalledMods(); // keeps the menu badges in step
   loadInstalledPacks();
+  // Updates are per version: forget the last check, and re-check if Installed is open.
+  upd.found = { mod: {}, pack: {}, shader: {} };
+  upd.checkedFor = null;
+  if (shadersSupported()) loadInstalledShaders(); else { shaderState.installed = []; renderInstalledExtras(); }
+  if (!$('modsInstalled').hidden) setTimeout(() => checkUpdates(), 500);
 }
 
 // ---------- loader ----------
@@ -561,10 +585,126 @@ function renderInstalledMods() {
       await loadInstalledMods();
     });
     const meta = [m.versionNumber, m.local ? 'added by you' : m.dependency ? 'dependency' : ''].filter(Boolean).join(' · ');
-    card.append(modIcon(m.icon), modBody(m.title, m.local ? null : (m.slug || id), meta, null, m.filename), toggle, remove);
+    card.append(modIcon(m.icon), modBody(m.title, m.local ? null : (m.slug || id), meta, null, m.filename), ...updateButton('mod', { ...m, id }), toggle, remove);
     list.append(card);
   }
+  updateUpdatesBar();
 }
+
+// ---------- updates (Mods > Installed lists mods, texture packs and shaders together) ----------
+
+// An "Update to x" button for a row, or nothing when it's up to date.
+function updateButton(kind, item) {
+  const next = item.id && upd.found[kind][item.id];
+  if (!next) return [];
+  const btn = document.createElement('button');
+  btn.className = 'install-btn update-btn';
+  const busy = upd.busy.has(`${kind}:${item.id}`);
+  btn.textContent = busy ? 'Updating…' : `Update to ${next.versionNumber}`;
+  btn.disabled = busy;
+  btn.title = `You have ${item.versionNumber || 'an older version'}`;
+  btn.addEventListener('click', () => runUpdates([{ kind, item }]));
+  return [btn];
+}
+
+async function runUpdates(list) {
+  for (const { kind, item } of list) upd.busy.add(`${kind}:${item.id}`);
+  renderAllInstalled();
+  const failed = [];
+  for (const { kind, item } of list) {
+    try {
+      if (kind === 'mod') await api.installMod({ target: target(), projectId: item.id });
+      else if (kind === 'shader') await api.updateShader({ target: target(), projectId: item.id });
+      else {
+        await api.installPack({ target: target(), projectId: item.id });
+        // Installing switches a pack on; keep it off if it was off.
+        if (!item.enabled) {
+          const now = (await api.listPacks({ target: target() })).find(p => p.id === item.id);
+          if (now) await api.togglePack({ target: target(), name: now.name, enabled: false });
+        }
+      }
+      delete upd.found[kind][item.id];
+    } catch (err) {
+      failed.push(`${item.title}: ${cleanError(err)}`);
+    } finally {
+      upd.busy.delete(`${kind}:${item.id}`);
+    }
+  }
+  await Promise.all([loadInstalledMods(), loadInstalledPacks(), loadInstalledShaders()]);
+  toast(failed.length ? `Some updates failed. ${failed.join(' · ')}` : `Updated ${list.length} item${list.length === 1 ? '' : 's'}.`);
+}
+
+async function checkUpdates(force = false) {
+  const key = targetKey();
+  if (upd.checking || (!force && upd.checkedFor === key)) return;
+  upd.checking = true;
+  upd.checkedFor = key;
+  updateUpdatesBar();
+  const pick = arr => arr.filter(x => x.id && !x.local).map(x => ({ id: x.id, versionId: x.versionId || null, versionNumber: x.versionNumber || '' }));
+  try {
+    const [mod, pack, shader] = await Promise.all([
+      modsAllowed() ? api.checkUpdates({ target: target(), kind: 'mod', items: pick([...mods.installed].map(([id, m]) => ({ ...m, id }))) }) : {},
+      api.checkUpdates({ target: target(), kind: 'pack', items: pick(packs.installed.filter(p => !p.id?.startsWith('pmc:'))) }),
+      shadersSupported() ? api.checkUpdates({ target: target(), kind: 'shader', items: pick(shaderState.installed) }) : {},
+    ]);
+    if (upd.checkedFor === key) upd.found = { mod, pack, shader };
+  } catch (err) {
+    toast(`Could not check for updates: ${cleanError(err)}`);
+  } finally {
+    upd.checking = false;
+  }
+  renderAllInstalled();
+}
+
+function pendingUpdates() {
+  const out = [];
+  for (const [id, m] of mods.installed) if (upd.found.mod[id]) out.push({ kind: 'mod', item: { ...m, id } });
+  for (const p of packs.installed) if (upd.found.pack[p.id]) out.push({ kind: 'pack', item: p });
+  for (const p of shaderState.installed) if (upd.found.shader[p.id]) out.push({ kind: 'shader', item: p });
+  return out;
+}
+
+function updateUpdatesBar() {
+  const n = pendingUpdates().length;
+  $('checkUpdates').disabled = upd.checking;
+  $('checkUpdates').textContent = upd.checking ? 'Checking…' : 'Check for updates';
+  $('updateAll').hidden = !n;
+  $('updateAll').textContent = `Update all (${n})`;
+  $('updatesInfo').textContent = upd.checking ? 'Looking for newer versions on Modrinth…'
+    : n ? `${n} update${n === 1 ? '' : 's'} available.`
+    : upd.checkedFor === targetKey() ? 'Everything is up to date.'
+    : 'Everything installed for this version: mods, texture packs and shaders.';
+}
+
+// The texture pack and shader sections of Mods > Installed.
+function renderInstalledExtras() {
+  const pl = $('installedPacksList');
+  resetList(pl);
+  $('installedPacksCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
+  if (!packs.installed.length) pl.append(listMessage('No texture packs for this version.'));
+  for (const p of packs.installed) pl.append(packCard(p));
+  const sl = $('installedShadersList');
+  resetList(sl);
+  $('installedShadersCount').textContent = shaderState.installed.length ? `(${shaderState.installed.length})` : '';
+  if (!shadersSupported()) sl.append(listMessage('Shaders need a mod loader (Fabric, FPS Boost, NeoForge or Forge).'));
+  else if (!shaderState.installed.length) sl.append(listMessage('No shaders for this version.'));
+  for (const p of shaderState.installed) sl.append(shaderCard(p));
+  updateUpdatesBar();
+}
+
+function renderAllInstalled() {
+  renderInstalledMods();
+  renderInstalledPacks();
+  renderInstalledShaders();
+}
+
+$('checkUpdates').addEventListener('click', () => checkUpdates(true));
+$('updateAll').addEventListener('click', () => runUpdates(pendingUpdates()));
+// Opening Installed loads everything for this version and checks for updates once.
+document.querySelector('#modsView [data-view="installed"]').addEventListener('click', async () => {
+  await Promise.all([loadInstalledPacks(), shadersSupported() ? loadInstalledShaders() : null]);
+  checkUpdates();
+});
 
 async function loadInstalledMods() {
   if (!modsAllowed()) { mods.installed = new Map(); renderInstalledMods(); renderModResults(); return; }
@@ -679,7 +819,12 @@ function renderInstalledPacks() {
   $('packsCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
   setBadge('packsBadge', packs.installed.filter(p => p.enabled).length);
   if (!packs.installed.length) { list.append(listMessage('No texture packs yet. Install one, or add your own .zip.')); return; }
-  for (const p of packs.installed) {
+  for (const p of packs.installed) list.append(packCard(p));
+  renderInstalledExtras();
+}
+
+function packCard(p) {
+  {
     const card = document.createElement('div');
     card.className = `mod-card${p.enabled ? '' : ' disabled'}`;
     const toggle = document.createElement('input');
@@ -700,8 +845,8 @@ function renderInstalledPacks() {
       await loadInstalledPacks();
     });
     const meta = [p.versionNumber, p.local ? 'added by you' : p.id?.startsWith('pmc:') ? 'from PacksMC' : 'from Modrinth'].filter(Boolean).join(' · ');
-    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), toggle, remove);
-    list.append(card);
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...updateButton('pack', p), toggle, remove);
+    return card;
   }
 }
 
@@ -849,7 +994,12 @@ function renderInstalledShaders() {
   $('shadersCount').textContent = shaderState.installed.length ? `(${shaderState.installed.length})` : '';
   setBadge('shadersBadge', shaderState.installed.some(p => p.enabled) ? 1 : 0);
   if (!shaderState.installed.length) { list.append(listMessage('No shaders yet. Install one, or add your own .zip.')); return; }
-  for (const p of shaderState.installed) {
+  for (const p of shaderState.installed) list.append(shaderCard(p));
+  renderInstalledExtras();
+}
+
+function shaderCard(p) {
+  {
     const card = document.createElement('div');
     card.className = `mod-card${p.enabled ? '' : ' disabled'}`;
     const toggle = document.createElement('input');
@@ -871,8 +1021,8 @@ function renderInstalledShaders() {
       await loadInstalledShaders();
     });
     const meta = [p.versionNumber, p.local ? 'added by you' : 'from Modrinth', p.enabled ? 'active' : ''].filter(Boolean).join(' · ');
-    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), toggle, remove);
-    list.append(card);
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...updateButton('shader', p), toggle, remove);
+    return card;
   }
 }
 
@@ -1024,10 +1174,25 @@ function renderModpacks() {
 
     const actions = document.createElement('div');
     actions.className = 'pack-card-actions';
+    // What's happening with this pack right now: starting, running or nothing.
+    const inst = instanceFor(keyFor(null, null, pack.id));
+    if (inst) {
+      card.classList.add(inst.state === 'running' ? 'is-running' : 'is-starting');
+      const live = document.createElement('span');
+      live.className = 'pack-live';
+      live.textContent = inst.state === 'running' ? '● Running' : 'Starting…';
+      text.append(live);
+    }
     const play = document.createElement('button');
-    play.className = 'install-btn';
-    play.textContent = 'Play';
-    play.addEventListener('click', () => { setActivePack(pack.id); showTab('play'); $('play').click(); });
+    play.className = `install-btn${inst?.state === 'running' ? ' stop' : ''}`;
+    play.textContent = inst?.state === 'running' ? 'Stop' : inst ? 'Starting…' : 'Play';
+    play.disabled = inst?.state === 'installing';
+    play.addEventListener('click', () => {
+      if (inst?.state === 'running') { api.kill(inst.key); return; }
+      setActivePack(pack.id);
+      showTab('play');
+      $('play').click();
+    });
     actions.append(play,
       iconButton('Edit mods & texture packs', ICONS.edit, () => { setActivePack(pack.id); showTab('mods'); }),
       iconButton('Export as .mrpack', ICONS.export, () => exportModpack(pack)),

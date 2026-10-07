@@ -51,7 +51,7 @@ function expandArgs(list, vars, features) {
   return out.map(a => a.replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)));
 }
 
-async function launch({ root, gameDir = root, versionId, account, memoryMb = 4096, onProgress = () => {}, onLog = () => {} }) {
+async function launch({ root, gameDir = root, versionId, account, memoryMb = 4096, extraJvmArgs = [], onProgress = () => {}, onLog = () => {} }) {
   fs.mkdirSync(gameDir, { recursive: true });
 
   onProgress('Loading version info', 0, 1);
@@ -96,6 +96,7 @@ async function launch({ root, gameDir = root, versionId, account, memoryMb = 409
     `-Xmx${memoryMb}M`,
     `-Xms${Math.max(1024, Math.floor(memoryMb / 2))}M`, // less heap resizing mid-game
     ...PERFORMANCE_JVM_ARGS,
+    ...extraJvmArgs,
     ...expandArgs(jvmTemplate, vars, features),
     ...(inst.loggingArg ? [inst.loggingArg] : []),
     version.mainClass,
@@ -104,7 +105,7 @@ async function launch({ root, gameDir = root, versionId, account, memoryMb = 409
 
   onProgress('Starting Minecraft', 1, 1);
   // Never echo the access token into the console.
-  const shown = args.map(a => (online && a.includes(account.accessToken) ? '<token>' : a.length > 200 ? '<classpath>' : a));
+  const shown = args.map(a => (online && a.includes(account.accessToken) ? '<token>' : a.startsWith('-Dtatnat.accounts=') ? '-Dtatnat.accounts=<private>' : a.length > 200 ? '<classpath>' : a));
   onLog(`> ${inst.javaBin} ${shown.join(' ')}\n`);
   const child = spawn(inst.javaBin, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false });
   child.stdout.setEncoding('utf8').on('data', onLog);

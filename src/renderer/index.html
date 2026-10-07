@@ -202,7 +202,17 @@
         <div class="mod-list" id="modResults"></div>
       </div>
       <div class="mods-installed" id="modsInstalled" hidden>
+        <div class="installed-bar">
+          <span id="updatesInfo">Everything installed for this version: mods, texture packs and shaders.</span>
+          <button class="ghost-btn" id="checkUpdates">Check for updates</button>
+          <button class="ghost-btn accent" id="updateAll" hidden>Update all</button>
+        </div>
+        <h3 class="installed-head">Mods</h3>
         <div class="mod-list" id="installedList"></div>
+        <h3 class="installed-head">Texture packs <span id="installedPacksCount"></span></h3>
+        <div class="mod-list" id="installedPacksList"></div>
+        <h3 class="installed-head">Shaders <span id="installedShadersCount"></span></h3>
+        <div class="mod-list" id="installedShadersList"></div>
       </div>
     </section>
 

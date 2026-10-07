@@ -73,6 +73,7 @@ async function list(dir) {
       title: meta.title,
       icon: meta.icon || null,
       versionNumber: meta.versionNumber || '',
+      versionId: meta.versionId || null,
       enabled: enabled.has(`file/${name}`),
       local: !tracked,
     });

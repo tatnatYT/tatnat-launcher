@@ -62,7 +62,7 @@ async function list({ dir, loader }) {
     const tracked = Object.entries(index).find(([, p]) => p.filename === name);
     const meta = tracked ? tracked[1] : { title: name.replace(/\.zip$/i, '') };
     out.push({ name, id: tracked ? tracked[0] : null, title: meta.title, icon: meta.icon || null,
-      versionNumber: meta.versionNumber || '', enabled: on === name, local: !tracked });
+      versionNumber: meta.versionNumber || '', versionId: meta.versionId || null, enabled: on === name, local: !tracked });
   }
   for (const [id, p] of Object.entries(index)) if (!names.includes(p.filename)) delete index[id];
   await writeIndex(dir, index);
@@ -99,7 +99,7 @@ async function install({ dir, projectId, mcVersion, loader, onStatus = () => {} 
   const old = index[projectId];
   if (old && old.filename !== file.filename) await fsp.rm(path.join(shadersDir(dir), old.filename), { recursive: true, force: true });
   await downloadFile(file.url, path.join(shadersDir(dir), file.filename), { sha1: file.hashes.sha1, size: file.size });
-  index[projectId] = { title: project.title, icon: project.icon_url || null, filename: file.filename, versionNumber: version.version_number };
+  index[projectId] = { title: project.title, icon: project.icon_url || null, filename: file.filename, versionNumber: version.version_number, versionId: version.id };
   await writeIndex(dir, index);
   await setActive({ dir, loader, name: file.filename });
   return project.title;

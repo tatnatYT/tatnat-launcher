@@ -162,6 +162,34 @@
       "built": "1.8.9"
     },
     {
+      "loader": "fabric",
+      "from": "1.9",
+      "until": "1.10",
+      "file": "tatnat-client-mc1.9.4-1.0.0.jar",
+      "built": "1.9.4"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.10",
+      "until": "1.11",
+      "file": "tatnat-client-mc1.10.2-1.0.0.jar",
+      "built": "1.10.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.11",
+      "until": "1.12",
+      "file": "tatnat-client-mc1.11.2-1.0.0.jar",
+      "built": "1.11.2"
+    },
+    {
+      "loader": "fabric",
+      "from": "1.12",
+      "until": "1.13",
+      "file": "tatnat-client-mc1.12.2-1.0.0.jar",
+      "built": "1.12.2"
+    },
+    {
       "loader": "neoforge",
       "from": "26.3",
       "until": "26.4",
@@ -225,6 +253,20 @@
       "built": "1.21.1"
     },
     {
+      "loader": "neoforge",
+      "from": "1.20.5",
+      "until": "1.20.7",
+      "file": "tatnat-client-neoforge-mc1.20.6-1.0.0.jar",
+      "built": "1.20.6"
+    },
+    {
+      "loader": "neoforge",
+      "from": "1.20.2",
+      "until": "1.20.5",
+      "file": "tatnat-client-neoforge-mc1.20.4-1.0.0.jar",
+      "built": "1.20.4"
+    },
+    {
       "loader": "forge",
       "from": "1.20",
       "until": "1.20.2",
@@ -233,10 +275,66 @@
     },
     {
       "loader": "forge",
+      "from": "1.19.4",
+      "until": "1.20",
+      "file": "tatnat-client-forge-mc1.19.4-1.0.0.jar",
+      "built": "1.19.4"
+    },
+    {
+      "loader": "forge",
+      "from": "1.19.3",
+      "until": "1.19.4",
+      "file": "tatnat-client-forge-mc1.19.3-1.0.0.jar",
+      "built": "1.19.3"
+    },
+    {
+      "loader": "forge",
+      "from": "1.19",
+      "until": "1.19.3",
+      "file": "tatnat-client-forge-mc1.19.2-1.0.0.jar",
+      "built": "1.19.2"
+    },
+    {
+      "loader": "forge",
+      "from": "1.18.2",
+      "until": "1.19",
+      "file": "tatnat-client-forge-mc1.18.2-1.0.0.jar",
+      "built": "1.18.2"
+    },
+    {
+      "loader": "forge",
       "from": "1.8.9",
       "until": "1.8.9.0.1",
       "file": "tatnat-client-forge-mc1.8.9-1.0.0.jar",
       "built": "1.8.9"
+    },
+    {
+      "loader": "forge",
+      "from": "1.9",
+      "until": "1.10",
+      "file": "tatnat-client-forge-mc1.9.4-1.0.0.jar",
+      "built": "1.9.4"
+    },
+    {
+      "loader": "forge",
+      "from": "1.10",
+      "until": "1.11",
+      "file": "tatnat-client-forge-mc1.10.2-1.0.0.jar",
+      "built": "1.10.2"
+    },
+    {
+      "loader": "forge",
+      "from": "1.11",
+      "until": "1.12",
+      "file": "tatnat-client-forge-mc1.11.2-1.0.0.jar",
+      "built": "1.11.2"
+    },
+    {
+      "loader": "forge",
+      "from": "1.12",
+      "until": "1.13",
+      "file": "tatnat-client-forge-mc1.12.2-1.0.0.jar",
+      "built": "1.12.2"
     }
   ]
 }

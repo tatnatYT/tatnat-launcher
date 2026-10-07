@@ -17,6 +17,7 @@ const { DiscordPresence } = require('./core/discord');
 const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boost');
 const clientMod = require('./core/clientmod');
 const shaders = require('./core/shaders');
+const updates = require('./core/updates');
 const skins = require('./core/skins');
 const { createUpdater } = require('./updater');
 
@@ -30,7 +31,9 @@ const DEFAULT_SETTINGS = { version: null, versionTypes: ['release'], loader: 'va
   discord: true, discordClientId: '', boostDisabled: [], boostExtra: [], clientMod: true };
 
 let win;
-let game = null;
+// Running games by target key (a modpack, or version + loader): several can run at once.
+const games = new Map();
+const accountBridge = require('./core/accountbridge');
 
 // Every loader + version gets its own game folder, so mods for one never break another
 // (and Fabric, Forge and NeoForge mods never mix).
@@ -166,7 +169,7 @@ const updater = createUpdater({ logDir: path.join(ROOT, 'logs'), send: (ch, payl
 ipcMain.handle('update:status', () => updater.getState());
 ipcMain.handle('update:check', () => updater.check());
 ipcMain.handle('update:install', () => {
-  if (game) throw new Error('Close Minecraft first - the update restarts the launcher.');
+  if (games.size) throw new Error('Close Minecraft first - the update restarts the launcher.');
   updater.installNow();
 });
 ipcMain.handle('settings:get', () => readSettings());
@@ -389,6 +392,27 @@ ipcMain.handle('shaders:add', async (_e, { target, files }) => {
 });
 ipcMain.handle('shaders:openFolder', async (_e, { target }) => openSubfolder((await resolveTarget(target)).gameDir, 'shaderpacks'));
 
+// ---------- updates for what's installed (mods, texture packs, shaders) ----------
+// kind: 'mod' | 'pack' | 'shader'; items: [{ id, versionId, versionNumber }]
+ipcMain.handle('updates:check', async (_e, { target, kind, items }) => {
+  const t = await resolveTarget(target);
+  if (kind === 'mod') {
+    const loader = t.loader === 'forge' || t.loader === 'neoforge' ? t.loader : 'fabric';
+    return updates.check(items, { mcVersion: t.mcVersion, loader });
+  }
+  return updates.check(items, { mcVersion: t.mcVersion, strictVersion: false });
+});
+// Updating a shader pack keeps whichever pack was switched on (install would switch to it).
+ipcMain.handle('shaders:update', async (_e, { target, projectId }) => {
+  const t = await resolveTarget(target);
+  const loader = shaderLoader(t);
+  const before = (await shaders.list({ dir: t.gameDir, loader })).find(s => s.enabled);
+  const wasThis = before && before.id === projectId;
+  const title = await shaders.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, onStatus: st => send('shaders:status', st) });
+  if (!wasThis) await shaders.setActive({ dir: t.gameDir, loader, name: before ? before.name : null });
+  return title;
+});
+
 // ---------- PacksMC (the player's own API key, encrypted like the account tokens) ----------
 // API keys the player pastes in (PacksMC, CurseForge), encrypted like the account tokens.
 const secretFile = name => path.join(ROOT, `${name}_key`);
@@ -553,15 +577,48 @@ ipcMain.handle('modpacks:export', async (_e, { id }) => {
   return { ...result, file: res.filePath };
 });
 
+// The fresh session the in-game account switcher asks for (see core/accountbridge.js).
+async function bridgeSession(id) {
+  let account = readAccounts().accounts.find(a => a.id === id);
+  if (!account) throw new Error('unknown account');
+  if (account.type === 'microsoft') {
+    account = await auth.ensureFresh(account);
+    saveAccount(account);
+  }
+  const store = readAccounts();
+  store.active = id;
+  writeAccounts(store);
+  send('accounts:changed', publicAccounts());
+  return account.type === 'microsoft'
+    ? { name: account.name, uuid: account.uuid, accessToken: account.accessToken, userType: 'msa', xuid: account.xuid }
+    : { name: account.name, uuid: offlineUuid(account.name), accessToken: '0', userType: 'legacy' };
+}
+const bridgeSource = {
+  list: () => readAccounts().accounts.map(a => ({ id: a.id, name: a.name, uuid: a.type === 'microsoft' ? a.uuid : offlineUuid(a.name), type: a.type })),
+  activeId: () => readAccounts().active,
+  session: bridgeSession,
+};
+
+const gameKey = (version, loader, packId) => (packId ? `pack:${packId}` : `${loader}:${version}`);
+const instanceList = () => [...games.values()].map(g => ({ key: g.key, state: g.state, packId: g.packId, version: g.version, loader: g.loader }));
+const sendInstances = () => send('game:instances', instanceList());
+
 ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId = null, memoryMb }) => {
-  if (game) throw new Error('Minecraft is already running');
+  const key = gameKey(version, loader, packId);
+  if (games.has(key)) throw new Error(games.get(key).state === 'installing' ? 'That one is still starting.' : 'That one is already running.');
   const store = readAccounts();
   let account = store.accounts.find(a => a.id === store.active);
   if (!account) throw new Error('Sign in first.');
   writeSettings({ ...readSettings(), version, loader, activePack: packId, memoryMb });
 
-  playing = { version, loader, modCount: 0, name: account.name, uuid: account.type === 'microsoft' ? account.uuid : null, start: null };
-  setGameState('installing');
+  const entry = { key, state: 'installing', packId, version, loader, child: null, playing: null };
+  games.set(key, entry);
+  sendInstances();
+  // Each launch has its own details (Discord shows the newest game).
+  let playing = { version, loader, modCount: 0, name: account.name, uuid: account.type === 'microsoft' ? account.uuid : null, start: null };
+  entry.playing = playing;
+  setPlaying(playing);
+  refreshGameState();
   try {
     if (account.type === 'microsoft') {
       send('game:progress', { stage: 'Signing in', done: 0, total: 1 });
@@ -641,31 +698,51 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
         send('game:log', `[tatnat launcher] Could not set up the tatnat client mod: ${err.message}\n`);
       }
     }
-    game = await launch({
+    let extraJvmArgs = [];
+    try {
+      extraJvmArgs = [await accountBridge.jvmArg(bridgeSource)];
+    } catch (err) {
+      send('game:log', `[tatnat launcher] In-game account switching is off: ${err.message}\n`);
+    }
+    entry.child = await launch({
       root: ROOT,
       gameDir,
       versionId,
       account,
       memoryMb,
+      extraJvmArgs,
       onProgress: (stage, done, total) => send('game:progress', { stage, done, total }),
       onLog: text => send('game:log', text),
     });
   } catch (err) {
-    setGameState('idle');
+    games.delete(key);
+    sendInstances();
+    refreshGameState();
     throw err;
   }
   playing.start = Date.now();
-  setGameState('running');
+  entry.playing = playing;
+  entry.state = 'running';
+  sendInstances();
+  refreshGameState();
   if (readSettings().closeOnLaunch) win.minimize();
-  game.on('exit', code => {
-    game = null;
-    send('game:log', `\n[tatnat launcher] Minecraft exited with code ${code}\n`);
-    setGameState('idle');
-    if (win && !win.isDestroyed()) win.restore();
+  entry.child.on('exit', code => {
+    games.delete(key);
+    sendInstances();
+    send('game:log', `\n[tatnat launcher] Minecraft (${entry.playing.packName || `${version} ${loader}`}) exited with code ${code}\n`);
+    // Discord shows another game that is still open, if any.
+    const other = [...games.values()].reverse().find(g => g.state === 'running');
+    if (other) setPlaying(other.playing);
+    refreshGameState();
+    if (!games.size && win && !win.isDestroyed()) win.restore();
   });
 });
 
-ipcMain.handle('game:kill', () => { game?.kill(); });
+// Stops one game (by key), or every game when no key is given.
+ipcMain.handle('game:kill', (_e, key) => {
+  for (const g of games.values()) if (!key || g.key === key) g.child?.kill();
+});
+ipcMain.handle('game:instances', () => instanceList());
 
 // ---------- Discord Rich Presence ----------
 // Pictures are Minecraft heads served by mc-heads.net, so the Discord app needs no uploaded art.
@@ -676,13 +753,19 @@ const TAB_STATUS = {
 };
 const presence = new DiscordPresence();
 let gameState = 'idle';
-let playing = null;    // details of the launch in progress / running game
+let playing = null;    // details of the newest launch in progress / running game (for Discord)
+const setPlaying = p => { playing = p; };
 let launcherView = {}; // { tab } reported by the window
 
 function setGameState(s) {
   gameState = s;
   send('game:state', s);
   updatePresence();
+}
+// Overall state across every game: installing wins over running, running over idle.
+function refreshGameState() {
+  const all = [...games.values()];
+  setGameState(all.some(g => g.state === 'installing') ? 'installing' : all.length ? 'running' : 'idle');
 }
 
 function buildActivity() {
