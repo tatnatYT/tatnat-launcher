@@ -4,6 +4,7 @@
 // tokens are never written to disk.
 //   GET /<secret>/accounts        -> one line per account: id \t name \t uuid \t type \t active(1|0)
 //   GET /<secret>/session?id=<id> -> name \t uuid \t accessToken \t userType \t xuid
+//   GET /<secret>/presence?server=<ip> -> "ok"; Discord shows the server you're on (empty = none)
 const http = require('http');
 const crypto = require('crypto');
 
@@ -47,6 +48,10 @@ async function handle(source, req, res) {
   if (action === 'session') {
     const s = await source.session(url.searchParams.get('id') || '');
     return reply(res, 200, [s.name, s.uuid, s.accessToken, s.userType, s.xuid || ''].map(clean).join('\t'));
+  }
+  if (action === 'presence') {
+    if (source.presence) source.presence({ server: (url.searchParams.get('server') || '').slice(0, 80) });
+    return reply(res, 200, 'ok');
   }
   return reply(res, 404, 'not found');
 }

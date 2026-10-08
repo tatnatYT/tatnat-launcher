@@ -597,6 +597,8 @@ const bridgeSource = {
   list: () => readAccounts().accounts.map(a => ({ id: a.id, name: a.name, uuid: a.type === 'microsoft' ? a.uuid : offlineUuid(a.name), type: a.type })),
   activeId: () => readAccounts().active,
   session: bridgeSession,
+  // The tatnat client says which server you joined (its Discord mod); shown on the newest game.
+  presence: ({ server }) => { if (playing) { playing.server = server || null; updatePresence(); } },
 };
 
 const gameKey = (version, loader, packId) => (packId ? `pack:${packId}` : `${loader}:${version}`);
@@ -774,7 +776,7 @@ function buildActivity() {
     buttons: [{ label: 'tatnat on YouTube', url: 'https://www.youtube.com/@tatnatmc' }],
   };
   if (gameState === 'running' && playing) {
-    activity.details = `Playing Minecraft ${playing.version}`;
+    activity.details = playing.server ? `Playing on ${playing.server}` : `Playing Minecraft ${playing.version}`;
     const mods = `${playing.modCount} mod${playing.modCount === 1 ? '' : 's'}`;
     activity.state = playing.loader === 'modpack' ? `${playing.packName} · ${mods}`
       : playing.loader === 'boost' ? `FPS Boost · ${mods}`
