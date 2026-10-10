@@ -56,8 +56,7 @@
     });
   }
 
-  // tatnat's head on the sign-in card and in Credits; the player's own head in the sidebar.
-  replaceWithHead('.login-card img.logo', 84, 'look');
+  // tatnat's head in Credits (made by); the player's own head in the sidebar.
   replaceWithHead('img.creator-head', 112, 'look');
   const card = document.getElementById('cardHead');
   card.classList.add('head3d-host');
@@ -70,11 +69,14 @@
   inner.className = 'splash-inner';
   const title = document.createElement('div');
   title.className = 'splash-title';
-  title.innerHTML = 'tatnat<span>LAUNCHER</span>';
+  title.innerHTML = 'Eclipse<span>CLIENT</span>';
   const bar = document.createElement('div');
   bar.className = 'splash-bar';
   bar.append(document.createElement('i'));
-  inner.append(head3d(110, { skin: TATNAT_SKIN, mode: 'spin' }), title, bar);
+  const mark = document.createElement('img');
+  mark.className = 'splash-logo';
+  mark.src = '../../assets/logo-256.png';
+  inner.append(mark, title, bar);
   splash.append(inner);
   document.body.append(splash);
   const shownAt = performance.now();

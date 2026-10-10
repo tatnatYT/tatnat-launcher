@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>tatnat launcher</title>
+  <title>Eclipse Client</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -15,8 +15,7 @@
   <aside class="sidebar">
     <div class="brand">
       <img class="logo" src="../../assets/logo-64.png" alt="">
-      <div class="brand-text">tatnat<span>LAUNCHER</span></div>
-      <span class="version-pill" id="appVersion"></span>
+      <div class="brand-text">Eclipse<span>CLIENT <b class="version-pill" id="appVersion"></b></span></div>
     </div>
 
     <nav id="nav">
@@ -131,6 +130,10 @@
           <svg viewBox="0 0 24 24"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c0 2-2 3-4 3S8 5 8 3z"/></svg>
           <strong>Skins</strong><span>Change your skin and cape</span><em id="tileSkins">Your look in game</em>
         </button>
+      </div>
+
+      <div class="flappy">
+        <canvas id="flappyCanvas" aria-label="Flappy Bird"></canvas>
       </div>
 
       <div class="dock" id="dock">
@@ -435,7 +438,7 @@
         </div>
         <div class="setting">
           <div>
-            <h3>tatnat client mod</h3>
+            <h3>Eclipse Client mod</h3>
             <p>In-game mod menu (Right Shift), HUD editor, keystrokes, zoom and more. Added automatically when you play Fabric or FPS Boost on 1.21.11.</p>
           </div>
           <input type="checkbox" class="switch" id="clientModOn">
@@ -444,7 +447,7 @@
           <div class="discord-top">
             <div>
               <h3>Show in Discord</h3>
-              <p>Your Discord status shows tatnat launcher, the version you play and for how long.</p>
+              <p>Your Discord status shows Eclipse Client, the version you play and for how long.</p>
             </div>
             <input type="checkbox" class="switch" id="discordOn">
           </div>
@@ -452,7 +455,7 @@
             <input id="discordId" placeholder="Discord application ID" spellcheck="false" autocomplete="off" inputmode="numeric">
             <span class="discord-status" id="discordStatus"></span>
           </div>
-          <p class="discord-help">Create an application named <b>tatnat launcher</b> in the
+          <p class="discord-help">Create an application named <b>Eclipse Client</b> in the
             <button class="link-btn" data-link="https://discord.com/developers/applications">Discord Developer Portal</button>
             and paste its Application ID here. The name is what Discord shows as "Playing".</p>
         </div>
@@ -477,7 +480,7 @@
         <div class="setting">
           <div>
             <h3>Updates</h3>
-            <p id="updateSetting">tatnat launcher updates itself from GitHub.</p>
+            <p id="updateSetting">Eclipse Client updates itself from GitHub.</p>
           </div>
           <button class="ghost-btn" id="checkAppUpdate">Check now</button>
         </div>
@@ -500,7 +503,7 @@
           <div>
             <span class="eyebrow">Made by</span>
             <h3>tatnat</h3>
-            <p>Thanks for playing on tatnat launcher! Subscribe for more features.</p>
+            <p>Thanks for playing on Eclipse Client! Subscribe for more features.</p>
             <button class="yt-btn" data-link="https://www.youtube.com/@tatnatmc">
               <svg viewBox="0 0 24 24"><path fill="#fff" d="M23 7.2a3 3 0 00-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 001 7.2 31 31 0 00.5 12a31 31 0 00.5 4.8 3 3 0 002.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 002.1-2.1 31 31 0 00.5-4.8 31 31 0 00-.5-4.8z"/><path fill="#e62117" d="M9.7 15.1l5.8-3.1-5.8-3.1z"/></svg>
               youtube.com/@tatnatmc
@@ -514,7 +517,7 @@
           <button class="power-card" data-link="https://modrinth.com/"><strong>Modrinth</strong><span>Mod library</span></button>
           <button class="power-card" data-link="https://www.electronjs.org/"><strong>Electron</strong><span>App framework</span></button>
         </div>
-        <p class="note">tatnat launcher is not affiliated with Mojang Studios or Microsoft.</p>
+        <p class="note">Eclipse Client is not affiliated with Mojang Studios or Microsoft.</p>
       </div>
     </section>
   </main>
@@ -551,7 +554,7 @@
         <button class="install-btn" type="submit" id="importLinkBtn">Import</button>
       </form>
       <p class="modal-status" id="importStatus" hidden></p>
-      <p class="modal-text small">Only Fabric modpacks run in tatnat launcher. CurseForge mods download automatically with a CurseForge API key (Settings); otherwise you get a list to download by hand.</p>
+      <p class="modal-text small">Only Fabric modpacks run in Eclipse Client. CurseForge mods download automatically with a CurseForge API key (Settings); otherwise you get a list to download by hand.</p>
       <div class="modal-actions"><button type="button" class="ghost-btn" id="importClose">Close</button></div>
     </div>
   </div>
@@ -570,7 +573,7 @@
   <div class="login" id="login" hidden>
     <div class="login-card">
       <img class="logo big" src="../../assets/logo-256.png" alt="">
-      <h1>tatnat launcher</h1>
+      <h1>Eclipse Client</h1>
       <p>Sign in with the Microsoft account that owns Minecraft: Java Edition.</p>
       <button class="ms-btn wide" data-action="ms-login">
         <svg viewBox="0 0 21 21"><path fill="#f25022" d="M0 0h10v10H0z"/><path fill="#7fba00" d="M11 0h10v10H11z"/><path fill="#00a4ef" d="M0 11h10v10H0z"/><path fill="#ffb900" d="M11 11h10v10H11z"/></svg>
@@ -585,5 +588,6 @@
   <script src="vendor/skinview3d.bundle.js"></script>
   <script src="renderer.js"></script>
   <script src="skins.js"></script>
+  <script src="flappy.js"></script>
 </body>
 </html>

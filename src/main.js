@@ -18,6 +18,7 @@ const { BOOST_MODS, installBoostPack, writeBoostOptions } = require('./core/boos
 const clientMod = require('./core/clientmod');
 const shaders = require('./core/shaders');
 const updates = require('./core/updates');
+const nameFilter = require('./core/namefilter');
 const skins = require('./core/skins');
 const { createUpdater } = require('./updater');
 
@@ -154,7 +155,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 640,
     backgroundColor: '#14161a',
-    title: 'tatnat launcher',
+    title: 'Eclipse Client',
     icon: ICON,
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
@@ -269,8 +270,26 @@ ipcMain.handle('accounts:loginMicrosoft', async () => {
   return publicAccounts();
 });
 
-ipcMain.handle('accounts:addOffline', (_e, name) => {
+// A fresh Minecraft token from any signed-in Microsoft account (for Minecraft's name filter), or null.
+async function anyMinecraftToken() {
+  const ms = readAccounts().accounts.find(a => a.type === 'microsoft');
+  if (!ms) return null;
+  try {
+    const fresh = await auth.ensureFresh(ms);
+    // Keep the refreshed token without changing which account is active.
+    const store = readAccounts();
+    const i = store.accounts.findIndex(a => a.id === fresh.id);
+    if (i >= 0) { store.accounts[i] = fresh; writeAccounts(store); }
+    return fresh.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle('accounts:addOffline', async (_e, name) => {
   if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) throw new Error('Names are 3–16 letters, numbers or underscores.');
+  // Inappropriate names are refused, using Minecraft's own name filter where possible.
+  await nameFilter.check(name, await anyMinecraftToken());
   saveAccount({ id: `off-${name.toLowerCase()}`, type: 'offline', name, uuid: offlineUuid(name), skinUrl: null });
   return publicAccounts();
 });
@@ -513,7 +532,22 @@ function boostPrefs() {
   return { disabled: s.boostDisabled, extra: s.boostExtra };
 }
 
-ipcMain.handle('boost:get', () => ({ builtins: BOOST_MODS, ...boostPrefs() }));
+// The FPS Boost mods' logos, looked up once on Modrinth (the list still shows without them).
+let boostIcons = null;
+async function boostIconMap() {
+  if (boostIcons) return boostIcons;
+  try {
+    const projects = await modrinth.api(`/projects?ids=${encodeURIComponent(JSON.stringify(BOOST_MODS.map(m => m.slug)))}`);
+    boostIcons = Object.fromEntries(projects.map(p => [p.slug, p.icon_url]));
+  } catch {
+    return {};
+  }
+  return boostIcons;
+}
+ipcMain.handle('boost:get', async () => {
+  const icons = await boostIconMap();
+  return { builtins: BOOST_MODS.map(m => ({ ...m, icon: icons[m.slug] || null })), ...boostPrefs() };
+});
 ipcMain.handle('boost:setBuiltin', (_e, { slug, enabled }) => {
   const s = readSettings();
   const off = new Set(s.boostDisabled);
@@ -607,7 +641,7 @@ const bridgeSource = {
   list: () => readAccounts().accounts.map(a => ({ id: a.id, name: a.name, uuid: a.type === 'microsoft' ? a.uuid : offlineUuid(a.name), type: a.type })),
   activeId: () => readAccounts().active,
   session: bridgeSession,
-  // The tatnat client says which server you joined (its Discord mod); shown on the newest game.
+  // The Eclipse Client says which server you joined (its Discord mod); shown on the newest game.
   presence: ({ server }) => { if (playing) { playing.server = server || null; updatePresence(); } },
 };
 
@@ -662,14 +696,14 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
         versionId = await installFabric(ROOT, version);
         gameDir = instanceDir(version);
         send('game:progress', { stage: 'Installing FPS Boost mods', done: 0, total: 1 });
-        const res = await installBoostPack({ dir: gameDir, mcVersion: version, ...boostPrefs(), onStatus: s => send('game:log', `[tatnat launcher] ${s}\n`) });
-        if (res.added.length) send('game:log', `[tatnat launcher] FPS Boost added: ${res.added.join(', ')}\n`);
-        if (res.unavailable.length) send('game:log', `[tatnat launcher] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
-        if (await writeBoostOptions(gameDir)) send('game:log', '[tatnat launcher] Applied FPS-friendly video settings\n');
+        const res = await installBoostPack({ dir: gameDir, mcVersion: version, ...boostPrefs(), onStatus: s => send('game:log', `[Eclipse Client] ${s}\n`) });
+        if (res.added.length) send('game:log', `[Eclipse Client] FPS Boost added: ${res.added.join(', ')}\n`);
+        if (res.unavailable.length) send('game:log', `[Eclipse Client] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
+        if (await writeBoostOptions(gameDir)) send('game:log', '[Eclipse Client] Applied FPS-friendly video settings\n');
       } catch (err) {
         if (!/support/i.test(err.message)) throw err;
         // Fabric doesn't exist for very old versions: still launch, with the JVM tuning only.
-        send('game:log', `[tatnat launcher] ${err.message} Launching vanilla with the optimised Java settings.\n`);
+        send('game:log', `[Eclipse Client] ${err.message} Launching vanilla with the optimised Java settings.\n`);
         useFabric = false;
         playing.loader = 'vanilla';
         versionId = version;
@@ -701,20 +735,20 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
       playing.modCount = fs.existsSync(modsFolder) ? fs.readdirSync(modsFolder).filter(f => f.endsWith('.jar')).length : 0;
     }
     if (gameDir !== ROOT) {
-      // Fabric, FPS Boost or a modpack: add or remove the tatnat client mod to match the setting.
+      // Fabric, FPS Boost or a modpack: add or remove the Eclipse Client mod to match the setting.
       try {
         const r = clientMod.sync({ gameDir, mcVersion: playing.version, loader: playing.loader, enabled: readSettings().clientMod !== false });
-        if (r === 'added' || r === 'updated') send('game:log', '[tatnat launcher] tatnat client mod ready: press Right Shift in game\n');
-        if (r === 'removed') send('game:log', '[tatnat launcher] tatnat client mod turned off, removed it\n');
+        if (r === 'added' || r === 'updated') send('game:log', '[Eclipse Client] Eclipse Client mod ready: press Right Shift in game\n');
+        if (r === 'removed') send('game:log', '[Eclipse Client] Eclipse Client mod turned off, removed it\n');
       } catch (err) {
-        send('game:log', `[tatnat launcher] Could not set up the tatnat client mod: ${err.message}\n`);
+        send('game:log', `[Eclipse Client] Could not set up the Eclipse Client mod: ${err.message}\n`);
       }
     }
     let extraJvmArgs = [];
     try {
       extraJvmArgs = [await accountBridge.jvmArg(bridgeSource)];
     } catch (err) {
-      send('game:log', `[tatnat launcher] In-game account switching is off: ${err.message}\n`);
+      send('game:log', `[Eclipse Client] In-game account switching is off: ${err.message}\n`);
     }
     entry.child = await launch({
       root: ROOT,
@@ -741,7 +775,7 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
   entry.child.on('exit', code => {
     games.delete(key);
     sendInstances();
-    send('game:log', `\n[tatnat launcher] Minecraft (${entry.playing.packName || `${version} ${loader}`}) exited with code ${code}\n`);
+    send('game:log', `\n[Eclipse Client] Minecraft (${entry.playing.packName || `${version} ${loader}`}) exited with code ${code}\n`);
     // Discord shows another game that is still open, if any.
     const other = [...games.values()].reverse().find(g => g.state === 'running');
     if (other) setPlaying(other.playing);
@@ -782,7 +816,7 @@ function refreshGameState() {
 
 function buildActivity() {
   const activity = {
-    assets: { large_image: LOGO_URL, large_text: 'tatnat launcher' },
+    assets: { large_image: LOGO_URL, large_text: 'Eclipse Client' },
     buttons: [{ label: 'tatnat on YouTube', url: 'https://www.youtube.com/@tatnatmc' }],
   };
   if (gameState === 'running' && playing) {

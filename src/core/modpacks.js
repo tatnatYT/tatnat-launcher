@@ -140,7 +140,7 @@ async function exportPack(root, id, outFile, { loaderVersion }) {
     game: 'minecraft',
     versionId: '1.0.0',
     name: meta.name,
-    summary: 'Made with tatnat launcher',
+    summary: 'Made with Eclipse Client',
     files,
     dependencies: { minecraft: meta.mcVersion, 'fabric-loader': loaderVersion },
   }, null, 2)));
@@ -168,7 +168,7 @@ async function importMrpack(root, file, { name, icon = null, source = null, onSt
   if (!deps.minecraft) throw new Error("This modpack doesn't say which Minecraft version it's for.");
   if (!deps['fabric-loader']) {
     const loader = Object.keys(deps).find(k => k !== 'minecraft') || 'unknown';
-    throw new Error(`tatnat launcher runs Fabric modpacks; this one needs ${loader}.`);
+    throw new Error(`Eclipse Client runs Fabric modpacks; this one needs ${loader}.`);
   }
 
   const meta = await create(root, {
@@ -213,7 +213,7 @@ async function importCurseForge(root, file, { key = '', name, icon = null, sourc
   const loaders = manifest.minecraft.modLoaders || [];
   const loader = (loaders.find(l => l.primary) || loaders[0])?.id || '';
   if (!loader.startsWith('fabric-')) {
-    throw new Error(`tatnat launcher runs Fabric modpacks; this one needs ${loader.split('-')[0] || 'another loader'}.`);
+    throw new Error(`Eclipse Client runs Fabric modpacks; this one needs ${loader.split('-')[0] || 'another loader'}.`);
   }
   const meta = await create(root, {
     name: name || manifest.name || path.basename(file, '.zip'),

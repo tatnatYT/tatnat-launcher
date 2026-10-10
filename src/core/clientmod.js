@@ -1,4 +1,4 @@
-// The tatnat client mod (in-game menu, HUD editor, keystrokes, zoom...). It ships inside the
+// The Eclipse Client mod (in-game menu, HUD editor, keystrokes, zoom...). It ships inside the
 // launcher and is copied into a modded instance's mods folder right before launch when the
 // setting is on, or removed when it's off. assets/mods/builds.json lists which jar covers which
 // Minecraft versions on which loader (written by the mod project's bundle script).

@@ -120,6 +120,10 @@ function paintHead(el, account) {
 function activeAccount() {
   return accountData.accounts.find(a => a.id === accountData.active) || null;
 }
+// Flappy tatnat files scores under the account you play with.
+window.flappyPlayerName = () => activeAccount()?.name || 'Player';
+// ... and uses that account's own head as the bird.
+window.flappySkinUrl = () => activeAccount()?.skinUrl || 'https://textures.minecraft.net/texture/31f477eb1a7beee631c2ca64d06f8f68fa93a3386d04452ab27f43acdf1b60cb';
 
 function renderAccounts() {
   const active = activeAccount();
@@ -310,7 +314,7 @@ $('play').addEventListener('click', async () => {
     await api.launch({ version, loader: settings.loader, packId: activePack()?.id || null, memoryMb: settings.memoryMb });
   } catch (err) {
     toast(cleanError(err));
-    appendLog(`\n[tatnat launcher] Launch failed: ${cleanError(err)}\n`);
+    appendLog(`\n[Eclipse Client] Launch failed: ${cleanError(err)}\n`);
   }
 });
 
@@ -884,7 +888,7 @@ async function installMod(id) {
   renderModResults();
   try {
     const names = await api.installMod({ target: target(), projectId: id });
-    if (names.length > 1) appendLog(`[tatnat launcher] Installed ${names.join(', ')}\n`);
+    if (names.length > 1) appendLog(`[Eclipse Client] Installed ${names.join(', ')}\n`);
     if (editingBoost()) {
       const m = mods.results.find(r => r.id === id);
       if (m) { await api.addBoostMod(m); toast(`${m.title} added to your FPS Boost pack - it installs on every version.`); renderBoostPack(); }
@@ -923,7 +927,7 @@ debounceInput('modSearch', q => { mods.query = q; searchMods(); });
 wireSegmented('modsView', { browse: 'modsBrowse', installed: 'modsInstalled' });
 $('addModFiles').addEventListener('click', () => addModFiles(null));
 $('openModsFolder').addEventListener('click', () => api.openModsFolder({ target: target() }));
-api.onModStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
+api.onModStatus(s => appendLog(`[Eclipse Client] ${s}\n`));
 
 // ---------- texture packs ----------
 const packs = { source: 'modrinth', query: '', offset: 0, total: 0, cursor: null, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null, pmcKey: false };
@@ -1232,7 +1236,7 @@ function refreshShaders() {
   if (!shaderState.results.length) searchShaders();
 }
 
-api.onShaderStatus(s => appendLog(`[tatnat launcher] ${s}\n`));
+api.onShaderStatus(s => appendLog(`[Eclipse Client] ${s}\n`));
 debounceInput('shaderSearch', q => { shaderState.query = q; searchShaders(); });
 wireSegmented('shadersView', { browse: 'shadersBrowse', installed: 'shadersInstalled' });
 $('addShaderFiles').addEventListener('click', async () => {
@@ -1508,7 +1512,7 @@ $('editPack').addEventListener('click', () => showTab('mods'));
 $('leavePack').addEventListener('click', () => setActivePack(null));
 api.onModpackStatus(s => {
   if (!$('newPackModal').hidden) { $('newPackStatus').hidden = false; $('newPackStatus').textContent = s; }
-  appendLog(`[tatnat launcher] ${s}\n`);
+  appendLog(`[Eclipse Client] ${s}\n`);
 });
 
 // New modpack dialog
@@ -1601,7 +1605,7 @@ function renderUpdate(s) {
     $('updateSub').textContent = 'Click to download it';
   }
   const text = {
-    idle: 'tatnat launcher updates itself from GitHub.',
+    idle: 'Eclipse Client updates itself from GitHub.',
     dev: 'Updates are off while running from source.',
     checking: 'Checking for updates…',
     none: `You're on the newest version (v${s.current || ''}).`,
@@ -1669,9 +1673,15 @@ async function renderBoostPack() {
     sw.className = 'switch';
     sw.checked = !off.has(m.slug);
     sw.addEventListener('change', async () => { await api.setBoostBuiltin({ slug: m.slug, enabled: sw.checked }); mods.loadedFor = null; renderBoostPack(); });
-    const tag = document.createElement('span');
-    tag.className = 'boost-tag';
-    tag.textContent = m.title.charAt(0);
+    let tag;
+    if (m.icon) {
+      tag = modIcon(m.icon);
+      tag.classList.add('small');
+    } else {
+      tag = document.createElement('span');
+      tag.className = 'boost-tag';
+      tag.textContent = m.title.charAt(0);
+    }
     row(tag, m.title, m.what, sw);
   }
   for (const m of extra) {
@@ -1717,7 +1727,7 @@ function renderClientMod() {
 $('clientModOn').addEventListener('change', async () => {
   settings.clientMod = $('clientModOn').checked;
   await api.setSettings({ clientMod: settings.clientMod });
-  toast(settings.clientMod ? 'tatnat client mod on: press Right Shift in game.' : 'tatnat client mod off: it is removed next time you play.');
+  toast(settings.clientMod ? 'Eclipse Client mod on: press Right Shift in game.' : 'Eclipse Client mod off: it is removed next time you play.');
 });
 
 $('discordOn').addEventListener('change', async () => {

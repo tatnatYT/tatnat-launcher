@@ -1,4 +1,4 @@
-// In-game account switcher: a tiny HTTP server on 127.0.0.1 that the tatnat client mod asks for
+// In-game account switcher: a tiny HTTP server on 127.0.0.1 that the Eclipse Client mod asks for
 // the launcher's accounts and for a fresh session when you switch. Each launch gets the address
 // and a random secret through -Dtatnat.accounts, so nothing else on the machine can use it and
 // tokens are never written to disk.
