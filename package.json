@@ -1,7 +1,7 @@
 {
   "name": "tatnat-client",
   "productName": "tatnat launcher",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "description": "tatnat launcher - a custom Minecraft launcher",
   "author": "tatnat",
   "main": "src/main.js",
