@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('launcher', {
   installShader: q => ipcRenderer.invoke('shaders:install', q),
   updateShader: q => ipcRenderer.invoke('shaders:update', q),
   checkUpdates: q => ipcRenderer.invoke('updates:check', q),
+  projectVersions: q => ipcRenderer.invoke('updates:versions', q),
   setShader: q => ipcRenderer.invoke('shaders:setActive', q),
   removeShader: q => ipcRenderer.invoke('shaders:remove', q),
   addShaders: q => ipcRenderer.invoke('shaders:add', q),

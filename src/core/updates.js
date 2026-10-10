@@ -37,4 +37,24 @@ async function check(items, { mcVersion, loader, strictVersion = true }) {
   return found;
 }
 
-module.exports = { check };
+/**
+ * Every version of a project the player can switch to, newest first: builds for this Minecraft
+ * version (and loader, for mods); texture packs and shaders fall back to all builds when none are
+ * tagged for this version.
+ */
+async function list({ projectId, mcVersion, loader, strictVersion = true }) {
+  const params = new URLSearchParams({ game_versions: JSON.stringify([mcVersion]) });
+  if (loader) params.set('loaders', JSON.stringify([loader]));
+  let versions = await modrinth.api(`/project/${projectId}/version?${params}`);
+  if (!versions.length && !strictVersion) versions = await modrinth.api(`/project/${projectId}/version`);
+  return versions.slice(0, 60).map(v => ({
+    id: v.id,
+    number: v.version_number,
+    name: v.name,
+    type: v.version_type,
+    date: v.date_published,
+    gameVersions: v.game_versions || [],
+  }));
+}
+
+module.exports = { check, list };

@@ -85,11 +85,11 @@ async function list(dir) {
 }
 
 // ---------- changes ----------
-async function install({ dir, projectId, mcVersion }) {
+async function install({ dir, projectId, mcVersion, versionId = null }) {
   const params = new URLSearchParams({ game_versions: JSON.stringify([mcVersion]) });
   const [project, exact] = await Promise.all([api(`/project/${projectId}`), api(`/project/${projectId}/version?${params}`)]);
   // Texture packs often work across versions, so fall back to the newest build if none is tagged for this one.
-  const versions = exact.length ? exact : await api(`/project/${projectId}/version`);
+  const versions = versionId ? [await api(`/version/${versionId}`)] : exact.length ? exact : await api(`/project/${projectId}/version`);
   if (!versions.length) throw new Error(`${project.title} has no downloads.`);
   const version = pickVersion(versions);
   const file = version.files.find(f => f.primary) || version.files[0];

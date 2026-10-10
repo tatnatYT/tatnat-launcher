@@ -427,13 +427,12 @@ function targetChanged() {
   if ($('tab-mods').classList.contains('active')) refreshMods();
   if ($('tab-packs').classList.contains('active')) refreshPacks();
   if ($('tab-shaders').classList.contains('active')) refreshShaders();
-  loadInstalledMods(); // keeps the menu badges in step
-  loadInstalledPacks();
-  // Updates are per version: forget the last check, and re-check if Installed is open.
+  // Updates are per version: forget the last check, then check again once everything is listed.
   upd.found = { mod: {}, pack: {}, shader: {} };
   upd.checkedFor = null;
-  if (shadersSupported()) loadInstalledShaders(); else { shaderState.installed = []; renderInstalledExtras(); }
-  if (!$('modsInstalled').hidden) setTimeout(() => checkUpdates(), 500);
+  const loads = [loadInstalledMods(), loadInstalledPacks()]; // keeps the menu badges in step
+  if (shadersSupported()) loads.push(loadInstalledShaders()); else { shaderState.installed = []; renderInstalledExtras(); }
+  Promise.allSettled(loads).then(() => checkUpdates());
 }
 
 // ---------- loader ----------
@@ -585,7 +584,7 @@ function renderInstalledMods() {
       await loadInstalledMods();
     });
     const meta = [m.versionNumber, m.local ? 'added by you' : m.dependency ? 'dependency' : ''].filter(Boolean).join(' · ');
-    card.append(modIcon(m.icon), modBody(m.title, m.local ? null : (m.slug || id), meta, null, m.filename), ...updateButton('mod', { ...m, id }), toggle, remove);
+    card.append(modIcon(m.icon), modBody(m.title, m.local ? null : (m.slug || id), meta, null, m.filename), ...rowActions('mod', { ...m, id }), toggle, remove);
     list.append(card);
   }
   updateUpdatesBar();
@@ -593,19 +592,126 @@ function renderInstalledMods() {
 
 // ---------- updates (Mods > Installed lists mods, texture packs and shaders together) ----------
 
-// An "Update to x" button for a row, or nothing when it's up to date.
-function updateButton(kind, item) {
-  const next = item.id && upd.found[kind][item.id];
-  if (!next) return [];
-  const btn = document.createElement('button');
-  btn.className = 'install-btn update-btn';
-  const busy = upd.busy.has(`${kind}:${item.id}`);
-  btn.textContent = busy ? 'Updating…' : `Update to ${next.versionNumber}`;
-  btn.disabled = busy;
-  btn.title = `You have ${item.versionNumber || 'an older version'}`;
-  btn.addEventListener('click', () => runUpdates([{ kind, item }]));
-  return [btn];
+const ICON_UPDATE = '<svg viewBox="0 0 24 24"><path d="M12 3.5v10.5"/><path d="M7.5 9.5L12 14l4.5-4.5"/><path d="M4 14.5V18a2.5 2.5 0 002.5 2.5h11A2.5 2.5 0 0020 18v-3.5"/></svg>';
+const ICON_SWAP = '<svg viewBox="0 0 24 24"><path d="M20 8H5"/><path d="M8.5 4.5L5 8l3.5 3.5"/><path d="M4 16h15"/><path d="M15.5 12.5L19 16l-3.5 3.5"/></svg>';
+
+// Can this row switch versions? Only things that came from Modrinth through the launcher.
+const versioned = item => item.id && !item.local && !String(item.id).startsWith('pmc:') && !String(item.id).startsWith('file:');
+
+// The small buttons on an installed row: the green update arrow (only when a newer version is
+// out) and the version switcher.
+function rowActions(kind, item) {
+  const out = [];
+  if (!versioned(item)) return out;
+  const key = `${kind}:${item.id}`;
+  const busy = upd.busy.has(key);
+  const next = upd.found[kind][item.id];
+  if (next) {
+    const b = document.createElement('button');
+    b.className = 'row-icon update';
+    b.innerHTML = ICON_UPDATE;
+    b.title = busy ? 'Updating…' : `Update to ${next.versionNumber} (you have ${item.versionNumber || 'an older version'})`;
+    b.disabled = busy;
+    b.addEventListener('click', () => runUpdates([{ kind, item }]));
+    out.push(b);
+  }
+  const v = document.createElement('button');
+  v.className = 'row-icon swap';
+  v.innerHTML = ICON_SWAP;
+  v.title = 'Change version';
+  v.disabled = busy;
+  v.addEventListener('click', e => { e.stopPropagation(); openVersionPicker(v, kind, item); });
+  out.push(v);
+  return out;
 }
+
+// ---------- version picker ----------
+let picker = null;
+function closeVersionPicker() {
+  if (picker) picker.remove();
+  picker = null;
+}
+document.addEventListener('mousedown', e => { if (picker && !picker.contains(e.target)) closeVersionPicker(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVersionPicker(); });
+
+const TYPE_TAG = { release: 'Release', beta: 'Beta', alpha: 'Alpha' };
+async function openVersionPicker(anchor, kind, item) {
+  closeVersionPicker();
+  const box = document.createElement('div');
+  box.className = 'version-picker';
+  const head = document.createElement('div');
+  head.className = 'vp-head';
+  head.innerHTML = '<strong></strong><span></span>';
+  head.querySelector('strong').textContent = item.title;
+  head.querySelector('span').textContent = `Installed: ${item.versionNumber || 'unknown'}`;
+  const list = document.createElement('div');
+  list.className = 'vp-list';
+  list.append(listMessage('Loading versions…'));
+  box.append(head, list);
+  document.body.append(box);
+  picker = box;
+  // Under the button, kept on screen.
+  const r = anchor.getBoundingClientRect();
+  const w = 400;
+  box.style.left = `${Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w))}px`;
+  const below = r.bottom + 6, room = window.innerHeight - below - 8;
+  if (room >= 220) { box.style.top = `${below}px`; box.style.maxHeight = `${Math.min(380, room)}px`; }
+  else { box.style.bottom = `${window.innerHeight - r.top + 6}px`; box.style.maxHeight = `${Math.min(380, r.top - 14)}px`; }
+
+  let versions;
+  try {
+    versions = await api.projectVersions({ target: target(), kind, projectId: item.id });
+  } catch (err) {
+    if (picker === box) list.replaceChildren(listMessage(`Could not load versions: ${cleanError(err)}`));
+    return;
+  }
+  if (picker !== box) return;
+  list.replaceChildren();
+  if (!versions.length) { list.append(listMessage('No other versions for this Minecraft version.')); return; }
+  for (const v of versions) {
+    const mine = v.id === item.versionId || (!item.versionId && v.number === item.versionNumber);
+    const row = document.createElement('button');
+    row.className = `vp-row${mine ? ' mine' : ''}`;
+    row.disabled = mine;
+    row.innerHTML = '<span class="vp-num"></span><span class="vp-tag"></span><span class="vp-date"></span>';
+    row.querySelector('.vp-num').textContent = v.number;
+    row.querySelector('.vp-tag').textContent = mine ? 'Installed' : TYPE_TAG[v.type] || v.type;
+    row.querySelector('.vp-tag').dataset.type = mine ? 'mine' : v.type;
+    row.querySelector('.vp-date').textContent = new Date(v.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    row.title = v.name && v.name !== v.number ? v.name : v.gameVersions.slice(-3).join(', ');
+    row.addEventListener('click', () => { closeVersionPicker(); switchVersion(kind, item, v); });
+    list.append(row);
+  }
+}
+
+// Installs one exact version in place of the current one, keeping it on or off as it was.
+async function switchVersion(kind, item, v) {
+  const key = `${kind}:${item.id}`;
+  upd.busy.add(key);
+  renderAllInstalled();
+  try {
+    if (kind === 'mod') {
+      await api.installMod({ target: target(), projectId: item.id, versionId: v.id });
+      if (item.enabled === false) await api.toggleMod({ target: target(), projectId: item.id, enabled: false });
+    } else if (kind === 'shader') {
+      await api.updateShader({ target: target(), projectId: item.id, versionId: v.id });
+    } else {
+      await api.installPack({ target: target(), projectId: item.id, versionId: v.id });
+      if (!item.enabled) {
+        const now = (await api.listPacks({ target: target() })).find(p => p.id === item.id);
+        if (now) await api.togglePack({ target: target(), name: now.name, enabled: false });
+      }
+    }
+    toast(`${item.title} is now on ${v.number}.`);
+  } catch (err) {
+    toast(`Could not switch ${item.title}: ${cleanError(err)}`);
+  } finally {
+    upd.busy.delete(key);
+  }
+  await Promise.all([loadInstalledMods(), loadInstalledPacks(), shadersSupported() ? loadInstalledShaders() : null]);
+  checkUpdates(true); // an older version now has an update again, a newer one doesn't
+}
+
 
 async function runUpdates(list) {
   for (const { kind, item } of list) upd.busy.add(`${kind}:${item.id}`);
@@ -613,7 +719,10 @@ async function runUpdates(list) {
   const failed = [];
   for (const { kind, item } of list) {
     try {
-      if (kind === 'mod') await api.installMod({ target: target(), projectId: item.id });
+      if (kind === 'mod') {
+        await api.installMod({ target: target(), projectId: item.id });
+        if (item.enabled === false) await api.toggleMod({ target: target(), projectId: item.id, enabled: false });
+      }
       else if (kind === 'shader') await api.updateShader({ target: target(), projectId: item.id });
       else {
         await api.installPack({ target: target(), projectId: item.id });
@@ -647,13 +756,31 @@ async function checkUpdates(force = false) {
       api.checkUpdates({ target: target(), kind: 'pack', items: pick(packs.installed.filter(p => !p.id?.startsWith('pmc:'))) }),
       shadersSupported() ? api.checkUpdates({ target: target(), kind: 'shader', items: pick(shaderState.installed) }) : {},
     ]);
-    if (upd.checkedFor === key) upd.found = { mod, pack, shader };
+    if (upd.checkedFor === key) { upd.found = { mod, pack, shader }; upd.fingerprint = installedFingerprint(); }
   } catch (err) {
     toast(`Could not check for updates: ${cleanError(err)}`);
   } finally {
     upd.checking = false;
   }
   renderAllInstalled();
+}
+
+// What is installed (project + version) right now; a change means the last check is stale.
+function installedFingerprint() {
+  const all = [...[...mods.installed].map(([id, m]) => `m:${id}@${m.versionId || m.versionNumber}`),
+    ...packs.installed.map(p => `p:${p.id}@${p.versionId || p.versionNumber}`),
+    ...shaderState.installed.map(p => `s:${p.id}@${p.versionId || p.versionNumber}`)];
+  return all.sort().join('|');
+}
+
+// Called whenever a list reloads: installing, removing or switching anything re-checks for updates.
+let recheckTimer;
+function maybeRecheck() {
+  clearTimeout(recheckTimer);
+  recheckTimer = setTimeout(() => {
+    if (upd.checking || upd.checkedFor !== targetKey()) return;
+    if (installedFingerprint() !== upd.fingerprint) checkUpdates(true);
+  }, 900);
 }
 
 function pendingUpdates() {
@@ -664,7 +791,25 @@ function pendingUpdates() {
   return out;
 }
 
+// Home tiles show what's installed; the menu gets a green dot where updates are waiting.
+function renderUpdateMarks() {
+  const pending = pendingUpdates();
+  const count = kind => pending.filter(p => p.kind === kind).length;
+  const tile = (id, total, label, kind) => {
+    const n = count(kind);
+    $(id).textContent = total ? `${total} ${label}${n ? ` · ${n} update${n === 1 ? '' : 's'}` : ''}` : 'None yet';
+    $(id).classList.toggle('has-updates', !!n);
+  };
+  tile('tileMods', mods.installed.size, 'installed', 'mod');
+  tile('tilePacks', packs.installed.length, 'installed', 'pack');
+  tile('tileShaders', shaderState.installed.length, 'installed', 'shader');
+  document.querySelector('.nav-btn[data-tab="mods"]').classList.toggle('has-updates', pending.length > 0);
+  document.querySelector('.nav-btn[data-tab="packs"]').classList.toggle('has-updates', count('pack') > 0);
+  document.querySelector('.nav-btn[data-tab="shaders"]').classList.toggle('has-updates', count('shader') > 0);
+}
+
 function updateUpdatesBar() {
+  renderUpdateMarks();
   const n = pendingUpdates().length;
   $('checkUpdates').disabled = upd.checking;
   $('checkUpdates').textContent = upd.checking ? 'Checking…' : 'Check for updates';
@@ -699,6 +844,7 @@ function renderAllInstalled() {
 }
 
 $('checkUpdates').addEventListener('click', () => checkUpdates(true));
+setInterval(() => checkUpdates(true), 30 * 60 * 1000);
 $('updateAll').addEventListener('click', () => runUpdates(pendingUpdates()));
 // Opening Installed loads everything for this version and checks for updates once.
 document.querySelector('#modsView [data-view="installed"]').addEventListener('click', async () => {
@@ -712,6 +858,7 @@ async function loadInstalledMods() {
   mods.installed = new Map(list.map(m => [m.id, m]));
   renderInstalledMods();
   renderModResults();
+  maybeRecheck();
 }
 
 let modSeq = 0;
@@ -845,7 +992,7 @@ function packCard(p) {
       await loadInstalledPacks();
     });
     const meta = [p.versionNumber, p.local ? 'added by you' : p.id?.startsWith('pmc:') ? 'from PacksMC' : 'from Modrinth'].filter(Boolean).join(' · ');
-    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...updateButton('pack', p), toggle, remove);
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...rowActions('pack', p), toggle, remove);
     return card;
   }
 }
@@ -854,6 +1001,7 @@ async function loadInstalledPacks() {
   packs.installed = await api.listPacks({ target: target() });
   renderInstalledPacks();
   renderPackResults();
+  maybeRecheck();
 }
 
 let packSeq = 0;
@@ -1021,7 +1169,7 @@ function shaderCard(p) {
       await loadInstalledShaders();
     });
     const meta = [p.versionNumber, p.local ? 'added by you' : 'from Modrinth', p.enabled ? 'active' : ''].filter(Boolean).join(' · ');
-    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...updateButton('shader', p), toggle, remove);
+    card.append(modIcon(p.icon), modBody(p.title, null, meta, null, p.name), ...rowActions('shader', p), toggle, remove);
     return card;
   }
 }
@@ -1034,6 +1182,7 @@ async function loadInstalledShaders() {
   }
   renderInstalledShaders();
   renderShaderResults();
+  maybeRecheck();
 }
 
 let shaderSeq = 0;
@@ -1470,7 +1619,7 @@ $('updateCard').addEventListener('click', async () => {
     try { await api.installUpdate(); } catch (err) { toast(cleanError(err)); }
   }
 });
-$('checkUpdates').addEventListener('click', () => api.checkForUpdate());
+$('checkAppUpdate').addEventListener('click', () => api.checkForUpdate());
 api.onUpdate(renderUpdate);
 api.updateStatus().then(renderUpdate);
 
@@ -1522,7 +1671,7 @@ async function renderBoostPack() {
     sw.addEventListener('change', async () => { await api.setBoostBuiltin({ slug: m.slug, enabled: sw.checked }); mods.loadedFor = null; renderBoostPack(); });
     const tag = document.createElement('span');
     tag.className = 'boost-tag';
-    tag.textContent = '⚡';
+    tag.textContent = m.title.charAt(0);
     row(tag, m.title, m.what, sw);
   }
   for (const m of extra) {

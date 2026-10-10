@@ -5,9 +5,9 @@
   --line: #2e333d;
   --text: #e8eaed;
   --muted: #8b919c;
-  --accent: #5fbf3a;
-  --accent-dark: #3f8a22;
-  --accent-light: #8ee05c;
+  --accent: #e5323e;
+  --accent-dark: #a31c26;
+  --accent-light: #ff6670;
   --danger: #e2574c;
   --pixel: 'Press Start 2P', ui-monospace, monospace;
 }
@@ -31,7 +31,7 @@ body { display: flex; }
   width: 236px;
   flex: none;
   background:
-    linear-gradient(180deg, rgba(95,191,58,.06), transparent 180px),
+    linear-gradient(180deg, rgba(229, 50, 62,.06), transparent 180px),
     var(--panel);
   border-right: 1px solid var(--line);
   display: flex;
@@ -67,7 +67,7 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .nav-indicator::before {
   content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px;
   border-radius: 0 3px 3px 0; background: var(--accent);
-  box-shadow: 0 0 10px rgba(95,191,58,.7);
+  box-shadow: 0 0 10px rgba(229, 50, 62,.7);
 }
 
 .nav-btn, .folder-btn {
@@ -92,7 +92,7 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .nav-btn[data-tab="play"] .nav-icon svg { fill: currentColor; }
 .nav-btn.active .nav-icon {
   color: #fff; background: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent-dark), 0 4px 12px rgba(95,191,58,.25);
+  box-shadow: inset 0 -2px 0 var(--accent-dark), 0 4px 12px rgba(229, 50, 62,.25);
 }
 .nav-text { flex: 1; }
 
@@ -107,31 +107,31 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .nav-badge {
   min-width: 20px; text-align: center;
   font-size: 11px; font-weight: 700; color: var(--accent-light);
-  background: rgba(95,191,58,.14); border-radius: 999px; padding: 1px 7px;
+  background: rgba(229, 50, 62,.14); border-radius: 999px; padding: 1px 7px;
 }
 .nav-badge[hidden], .nav-dot[hidden] { display: none; }
 .nav-dot {
   width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
-  background: var(--accent); box-shadow: 0 0 0 0 rgba(95,191,58,.6);
+  background: var(--accent); box-shadow: 0 0 0 0 rgba(229, 50, 62,.6);
   animation: pulse 1.6s infinite;
 }
-.nav-dot.unread { background: #e0b341; animation: none; }
+.nav-dot.unread { background: #ff6670; animation: none; }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(95,191,58,.6); }
-  70% { box-shadow: 0 0 0 7px rgba(95,191,58,0); }
-  100% { box-shadow: 0 0 0 0 rgba(95,191,58,0); }
+  0% { box-shadow: 0 0 0 0 rgba(229, 50, 62,.6); }
+  70% { box-shadow: 0 0 0 7px rgba(229, 50, 62,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 50, 62,0); }
 }
 
 .status-card {
   display: flex; align-items: center; gap: 12px; text-align: left;
   font: inherit; color: var(--text); cursor: pointer;
-  background: linear-gradient(135deg, rgba(95,191,58,.12), rgba(95,191,58,.02));
-  border: 1px solid rgba(95,191,58,.22); border-radius: 12px; padding: 11px 12px;
+  background: linear-gradient(135deg, rgba(229, 50, 62,.12), rgba(229, 50, 62,.02));
+  border: 1px solid rgba(229, 50, 62,.22); border-radius: 12px; padding: 11px 12px;
 }
-.status-card:hover { border-color: rgba(95,191,58,.45); }
+.status-card:hover { border-color: rgba(229, 50, 62,.45); }
 .status-light { width: 10px; height: 10px; flex: none; border-radius: 50%; background: #5d636d; margin-left: 4px; }
 .status-card.ready .status-light { background: var(--accent); }
-.status-card.busy .status-light { background: #e0b341; animation: blink 1s infinite; }
+.status-card.busy .status-light { background: #ff6670; animation: blink 1s infinite; }
 .status-card.running .status-light { background: var(--accent); animation: pulse 1.6s infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 .status-text { display: flex; flex-direction: column; min-width: 0; }
@@ -351,7 +351,7 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
   position: fixed; inset: 0; z-index: 10;
   display: grid; place-items: center;
   background:
-    radial-gradient(ellipse at 50% 30%, rgba(95,191,58,.16), transparent 60%),
+    radial-gradient(ellipse at 50% 30%, rgba(229, 50, 62,.16), transparent 60%),
     rgba(12,13,16,.94);
   backdrop-filter: blur(6px);
 }
@@ -446,7 +446,7 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
 .creator {
   display: flex; gap: 26px; align-items: center;
   background:
-    radial-gradient(ellipse at 0% 50%, rgba(95,191,58,.14), transparent 60%),
+    radial-gradient(ellipse at 0% 50%, rgba(229, 50, 62,.14), transparent 60%),
     var(--panel);
   border: 1px solid var(--line); border-radius: 16px; padding: 26px;
 }
@@ -483,20 +483,20 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-si
 .discord-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #5d636d; }
 .discord-status.connected { color: var(--accent-light); }
 .discord-status.connected::before { background: var(--accent); }
-.discord-status.waiting { color: #e0b341; }
-.discord-status.waiting::before { background: #e0b341; }
+.discord-status.waiting { color: #ff6670; }
+.discord-status.waiting::before { background: #ff6670; }
 .discord-help { font-size: 12px !important; }
-.discord-help .link-btn { font-size: 12px; padding: 0; color: #8ea1ff; }
+.discord-help .link-btn { font-size: 12px; padding: 0; color: #ff6670; }
 .discord-setting.off .discord-id, .discord-setting.off .discord-help { opacity: .45; }
 .discord-status.bad-id { color: #ff8a80; }
 .discord-status.bad-id::before { background: var(--danger); }
 
 /* ---------- FPS Boost loader option ---------- */
 .segmented button.boost { display: inline-flex; align-items: center; gap: 6px; }
-.segmented button.boost svg { width: 14px; height: 14px; fill: #e0b341; }
+.segmented button.boost svg { width: 14px; height: 14px; fill: #ff6670; }
 .segmented button.boost.on {
-  background: linear-gradient(135deg, #f0b429, #e07b1f);
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25), 0 0 14px rgba(240,180,41,.35);
+  background: linear-gradient(135deg, #ff6670, #c92833);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.25), 0 0 14px rgba(229, 50, 62,.35);
 }
 .segmented button.boost.on svg { fill: #fff; }
 .field.loader-field { width: auto; flex: none; }
@@ -590,13 +590,13 @@ body.dragging .tab.active .drop-zone { display: grid; }
 
 /* ---------- FPS Boost pack editor ---------- */
 .boost-setting { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
-.boost-count { font-size: 11px; font-weight: 600; color: #f0b429; background: rgba(240,180,41,.12); border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+.boost-count { font-size: 11px; font-weight: 600; color: #ff6670; background: rgba(229, 50, 62,.12); border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
 .boost-pack { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
 .boost-row { display: flex; align-items: center; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 8px 10px; }
 .boost-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .boost-text strong { font-size: 13px; }
 .boost-text span { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.boost-tag { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 7px; background: rgba(240,180,41,.14); font-size: 13px; }
+.boost-tag { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 7px; background: rgba(229, 50, 62,.14); font-size: 13px; }
 .mod-icon.small { width: 28px; height: 28px; border-radius: 7px; }
 .boost-row .remove-btn { width: 28px; height: 28px; }
 
@@ -623,7 +623,7 @@ body.dragging .tab.active .drop-zone { display: grid; }
 .pmc-setup[hidden] { display: none; }
 .pmc-setup h3 { margin: 0 0 6px; font-size: 15px; }
 .pmc-setup p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
-.pmc-setup .link-btn { font-size: 13px; padding: 0; color: #8ea1ff; }
+.pmc-setup .link-btn { font-size: 13px; padding: 0; color: #ff6670; }
 .pmc-form { display: flex; gap: 8px; }
 .pmc-form input { flex: 1; max-width: 360px; }
 .pmc-form .install-btn { height: 44px; }

@@ -82,7 +82,7 @@ async function ensureShaderMod({ dir, mcVersion, loader, onStatus }) {
 }
 
 // ---------- changes ----------
-async function install({ dir, projectId, mcVersion, loader, onStatus = () => {} }) {
+async function install({ dir, projectId, mcVersion, loader, versionId = null, onStatus = () => {} }) {
   await ensureShaderMod({ dir, mcVersion, loader, onStatus });
   const params = new URLSearchParams({ game_versions: JSON.stringify([mcVersion]) });
   const [project, exact] = await Promise.all([modrinth.api(`/project/${projectId}`), modrinth.api(`/project/${projectId}/version?${params}`)]);
@@ -90,6 +90,7 @@ async function install({ dir, projectId, mcVersion, loader, onStatus = () => {} 
   let versions = exact.length ? exact : await modrinth.api(`/project/${projectId}/version`);
   const forShaderMod = versions.filter(v => (v.loaders || []).some(l => l === 'iris' || l === 'optifine' || l === 'canvas'));
   if (forShaderMod.length) versions = forShaderMod;
+  if (versionId) versions = [await modrinth.api(`/version/${versionId}`)];
   if (!versions.length) throw new Error(`${project.title} has no downloads.`);
   const version = modrinth.pickVersion(versions);
   const file = version.files.find(f => f.primary) || version.files[0];

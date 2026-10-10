@@ -81,7 +81,7 @@ function pickVersion(versions) {
   return versions.find(v => v.version_type === 'release') || versions[0];
 }
 
-async function install({ dir, projectId, mcVersion, loader = 'fabric', onStatus = () => {} }) {
+async function install({ dir, projectId, mcVersion, loader = 'fabric', versionId = null, onStatus = () => {} }) {
   const index = await readIndex(dir);
   const seen = new Set();
   const installed = [];
@@ -91,8 +91,11 @@ async function install({ dir, projectId, mcVersion, loader = 'fabric', onStatus 
     seen.add(id);
     if (isDependency && index[id]) return; // already have some version of it
 
+    // The player picked an exact version (Change version): use it instead of the newest.
+    const exact = !isDependency && versionId && id === projectId;
     const params = new URLSearchParams({ loaders: JSON.stringify([loader]), game_versions: JSON.stringify([mcVersion]) });
-    const [project, versions] = await Promise.all([api(`/project/${id}`), api(`/project/${id}/version?${params}`)]);
+    const [project, versions] = await Promise.all([api(`/project/${id}`),
+      exact ? api(`/version/${versionId}`).then(v => [v]) : api(`/project/${id}/version?${params}`)]);
     if (!versions.length) throw new Error(`${project.title} has no ${LOADER_NAME[loader] || loader} build for Minecraft ${mcVersion}.`);
     const version = pickVersion(versions);
     const file = version.files.find(f => f.primary) || version.files[0];

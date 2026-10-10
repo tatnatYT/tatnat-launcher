@@ -52,9 +52,9 @@ main::before { display: none; }
 }
 
 /* ---------- modpack cards: what's running ---------- */
-.pack-card.is-running { border-color: rgba(78, 201, 120, .55); box-shadow: 0 0 0 1px rgba(78, 201, 120, .25) inset; }
-.pack-card.is-starting { border-color: rgba(78, 177, 255, .45); }
-.pack-live { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #4ec978; }
+.pack-card.is-running { border-color: rgba(229, 50, 62, .55); box-shadow: 0 0 0 1px rgba(229, 50, 62, .25) inset; }
+.pack-card.is-starting { border-color: rgba(229, 50, 62, .45); }
+.pack-live { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #ff6670; }
 .pack-card.is-starting .pack-live { color: var(--accent); }
 .install-btn.stop { background: #c94a4a; }
 .install-btn.stop:hover { background: #d95a5a; }
@@ -66,5 +66,5 @@ main::before { display: none; }
 .installed-bar span { flex: 1; font-size: 13px; color: var(--muted); }
 .installed-head { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; padding: 0 32px; }
 .installed-head span { font-weight: 500; }
-.update-btn { white-space: nowrap; background: #2f7d4f; }
-.update-btn:hover { background: #379159; }
+.update-btn { white-space: nowrap; background: #a31c26; }
+.update-btn:hover { background: #c92833; }

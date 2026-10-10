@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="cool.css">
   <link rel="stylesheet" href="skins.css">
   <link rel="stylesheet" href="home.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
   <aside class="sidebar">
@@ -64,7 +65,7 @@
       </button>
       <button class="nav-btn" data-tab="console" data-key="7">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg></span>
-        <span class="nav-text">Console</span>
+        <span class="nav-text">Logs</span>
         <span class="nav-dot unread" id="logDot" hidden></span>
         <kbd>Ctrl 7</kbd>
       </button>
@@ -82,7 +83,7 @@
 
     <div class="sidebar-foot">
       <button class="update-card" id="updateCard" hidden>
-        <span class="update-icon">⬆</span>
+        <span class="update-icon"><svg viewBox="0 0 24 24"><path d="M12 3.5v10.5"/><path d="M7.5 9.5L12 14l4.5-4.5"/><path d="M4 14.5V18a2.5 2.5 0 002.5 2.5h11A2.5 2.5 0 0020 18v-3.5"/></svg></span>
         <span class="status-text">
           <strong id="updateTitle">Update available</strong>
           <span id="updateSub"></span>
@@ -116,19 +117,19 @@
       <div class="home-tiles">
         <button class="home-tile" data-tab="mods">
           <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
-          <strong>Mods</strong><span>Add mods from Modrinth</span>
+          <strong>Mods</strong><span>Add mods from Modrinth</span><em id="tileMods"></em>
         </button>
         <button class="home-tile" data-tab="shaders">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
-          <strong>Shaders</strong><span>Better lighting and water</span>
+          <strong>Shaders</strong><span>Better lighting and water</span><em id="tileShaders"></em>
         </button>
         <button class="home-tile" data-tab="packs">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="16" cy="8" r="1.6"/></svg>
-          <strong>Texture Packs</strong><span>Change how blocks look</span>
+          <strong>Texture Packs</strong><span>Change how blocks look</span><em id="tilePacks"></em>
         </button>
         <button class="home-tile" data-tab="skins">
           <svg viewBox="0 0 24 24"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c0 2-2 3-4 3S8 5 8 3z"/></svg>
-          <strong>Skins</strong><span>Change your skin and cape</span>
+          <strong>Skins</strong><span>Change your skin and cape</span><em id="tileSkins">Your look in game</em>
         </button>
       </div>
 
@@ -162,7 +163,7 @@
             <button data-loader="fabric">Fabric</button>
             <button data-loader="forge" title="Minecraft Forge: for Forge mods and modpacks">Forge</button>
             <button data-loader="neoforge" title="NeoForge (1.20.2 and newer)">NeoForge</button>
-            <button data-loader="boost" class="boost" title="Fabric + a performance mod pack, tuned settings and Java flags"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>FPS Boost</button>
+            <button data-loader="boost" class="boost" title="Fabric + a performance mod pack, tuned settings and Java flags">FPS Boost</button>
           </div>
         </div>
         <button class="play-btn" id="play">PLAY</button>
@@ -403,7 +404,7 @@
 
     <section class="tab" id="tab-console">
       <div class="panel-head">
-        <h2>Console</h2>
+        <h2>Logs</h2>
         <button class="ghost-btn" id="clearLog">Clear</button>
       </div>
       <pre id="log"></pre>
@@ -425,7 +426,7 @@
         <div class="setting boost-setting">
           <div class="discord-top">
             <div>
-              <h3>⚡ Your FPS Boost pack <span class="boost-count" id="boostCount"></span></h3>
+              <h3>Your FPS Boost pack <span class="boost-count" id="boostCount"></span></h3>
               <p>Installed automatically whenever you play with FPS Boost, on every version.</p>
             </div>
             <button class="ghost-btn accent" id="boostAddMods">+ Add mods</button>
@@ -478,7 +479,7 @@
             <h3>Updates</h3>
             <p id="updateSetting">tatnat launcher updates itself from GitHub.</p>
           </div>
-          <button class="ghost-btn" id="checkUpdates">Check now</button>
+          <button class="ghost-btn" id="checkAppUpdate">Check now</button>
         </div>
         <div class="setting">
           <div>

@@ -22,7 +22,8 @@ const skins = require('./core/skins');
 const { createUpdater } = require('./updater');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
-const ROOT = path.join(app.getPath('appData'), '.tatnatclient');
+// TATNAT_ROOT: a separate data folder (dev tests), so testing never touches the player's games.
+const ROOT = process.env.TATNAT_ROOT || path.join(app.getPath('appData'), '.tatnatclient');
 const OLD_ROOT = path.join(app.getPath('appData'), '.baselauncher'); // pre-rename data folder
 const ICON = path.join(__dirname, '..', 'assets', 'icon.ico');
 const SETTINGS_FILE = path.join(ROOT, 'launcher_settings.json');
@@ -333,10 +334,10 @@ function openSubfolder(dir, sub) {
 ipcMain.handle('mods:search', (_e, { query, mcVersion, offset, loader }) =>
   modrinth.search({ query, mcVersion, offset, type: 'mod', loader: loader === 'forge' || loader === 'neoforge' ? loader : 'fabric' }));
 ipcMain.handle('mods:list', async (_e, { target }) => modrinth.listInstalled((await resolveTarget(target)).gameDir));
-ipcMain.handle('mods:install', async (_e, { target, projectId }) => {
+ipcMain.handle('mods:install', async (_e, { target, projectId, versionId }) => {
   const t = await resolveTarget(target);
   const loader = t.loader === 'forge' || t.loader === 'neoforge' ? t.loader : 'fabric';
-  return modrinth.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, onStatus: s => send('mods:status', s) });
+  return modrinth.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, versionId, onStatus: s => send('mods:status', s) });
 });
 ipcMain.handle('mods:remove', async (_e, { target, projectId }) => modrinth.remove({ dir: (await resolveTarget(target)).gameDir, projectId }));
 ipcMain.handle('mods:toggle', async (_e, { target, projectId, enabled }) =>
@@ -350,9 +351,9 @@ ipcMain.handle('mods:openFolder', async (_e, { target }) => openSubfolder((await
 // ---------- texture packs ----------
 ipcMain.handle('packs:search', (_e, { query, mcVersion, offset }) => modrinth.search({ query, mcVersion, offset, type: 'resourcepack' }));
 ipcMain.handle('packs:list', async (_e, { target }) => texturePacks.list((await resolveTarget(target)).gameDir));
-ipcMain.handle('packs:install', async (_e, { target, projectId }) => {
+ipcMain.handle('packs:install', async (_e, { target, projectId, versionId }) => {
   const t = await resolveTarget(target);
-  return texturePacks.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion });
+  return texturePacks.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, versionId });
 });
 ipcMain.handle('packs:remove', async (_e, { target, name }) => texturePacks.remove({ dir: (await resolveTarget(target)).gameDir, name }));
 ipcMain.handle('packs:toggle', async (_e, { target, name, enabled }) =>
@@ -402,13 +403,22 @@ ipcMain.handle('updates:check', async (_e, { target, kind, items }) => {
   }
   return updates.check(items, { mcVersion: t.mcVersion, strictVersion: false });
 });
-// Updating a shader pack keeps whichever pack was switched on (install would switch to it).
-ipcMain.handle('shaders:update', async (_e, { target, projectId }) => {
+// Every version of an installed project the player can switch to (Change version).
+ipcMain.handle('updates:versions', async (_e, { target, kind, projectId }) => {
+  const t = await resolveTarget(target);
+  if (kind === 'mod') {
+    const loader = t.loader === 'forge' || t.loader === 'neoforge' ? t.loader : 'fabric';
+    return updates.list({ projectId, mcVersion: t.mcVersion, loader });
+  }
+  return updates.list({ projectId, mcVersion: t.mcVersion, strictVersion: false });
+});
+// Updating (or switching the version of) a shader pack keeps whichever pack was switched on (install would switch to it).
+ipcMain.handle('shaders:update', async (_e, { target, projectId, versionId }) => {
   const t = await resolveTarget(target);
   const loader = shaderLoader(t);
   const before = (await shaders.list({ dir: t.gameDir, loader })).find(s => s.enabled);
   const wasThis = before && before.id === projectId;
-  const title = await shaders.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, onStatus: st => send('shaders:status', st) });
+  const title = await shaders.install({ dir: t.gameDir, projectId, mcVersion: t.mcVersion, loader, versionId, onStatus: st => send('shaders:status', st) });
   if (!wasThis) await shaders.setActive({ dir: t.gameDir, loader, name: before ? before.name : null });
   return title;
 });
