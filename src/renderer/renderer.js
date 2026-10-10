@@ -1759,7 +1759,7 @@ setInterval(() => { if ($('tab-settings').classList.contains('active')) renderDi
   renderClientMod();
   renderBoostPack();
   moveIndicator();
-  api.appVersion().then(v => { $('appVersion').textContent = `v${v}`; });
+  api.appVersion().then(v => { $('appVersion').textContent = `v${v} BETA`; });
   await loadVersions();
   await loadModpacks();
   targetChanged();
