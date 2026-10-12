@@ -99,35 +99,35 @@
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     // sky: dark with a faint red glow at the horizon
     const sky = g.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#141012');
-    sky.addColorStop(1, '#241417');
+    sky.addColorStop(0, '#120f1a');
+    sky.addColorStop(1, '#1c1530');
     g.fillStyle = sky;
     g.fillRect(0, 0, W, H);
 
     // pipes: blocky, red brick style
     for (const p of pipes) {
       for (const [top, h] of [[0, p.top], [p.top + gap(), H - 28 - p.top - gap()]]) {
-        g.fillStyle = '#a31c26';
+        g.fillStyle = '#5b3fae';
         g.fillRect(p.x, top, PIPE_W, h);
-        g.fillStyle = '#e5323e';
+        g.fillStyle = '#8a63e8';
         g.fillRect(p.x + 4, top, PIPE_W - 16, h);
         g.fillStyle = 'rgba(255,255,255,.12)';
         g.fillRect(p.x + 8, top, 5, h);
         // cap
         const capY = top === 0 ? p.top - 18 : top;
-        g.fillStyle = '#c92833';
+        g.fillStyle = '#6f4cc9';
         g.fillRect(p.x - 5, capY, PIPE_W + 10, 18);
-        g.fillStyle = '#5a1015';
+        g.fillStyle = '#2f2156';
         g.fillRect(p.x - 5, capY + (top === 0 ? 15 : 0), PIPE_W + 10, 3);
       }
     }
 
     // ground
-    g.fillStyle = '#2a2224';
+    g.fillStyle = '#25202f';
     g.fillRect(0, H - 28, W, 28);
-    g.fillStyle = '#e5323e';
+    g.fillStyle = '#8a63e8';
     g.fillRect(0, H - 28, W, 3);
-    g.fillStyle = '#3a3033';
+    g.fillStyle = '#352f44';
     for (let x = groundX; x < W; x += 24) g.fillRect(x, H - 18, 12, 4);
 
     // the head, tilted with the speed
@@ -155,27 +155,27 @@
     }
     g.textAlign = 'right';
     g.font = '700 12px Inter, sans-serif';
-    g.fillStyle = '#9b908d';
+    g.fillStyle = '#9a95a8';
     g.fillText('BEST ' + best(), W - 14, 24);
     g.textAlign = 'center';
     if (state === 'ready') {
       g.font = "13px 'Press Start 2P', monospace";
       g.fillText('FLAPPY ' + (window.flappyPlayerName?.() || 'BIRD').toUpperCase(), W / 2, H * 0.24);
       g.font = '600 13px Inter, sans-serif';
-      g.fillStyle = '#9b908d';
+      g.fillStyle = '#9a95a8';
       g.fillText('Click or press Space to flap', W / 2, H * 0.24 + 26);
     }
     if (state === 'over') {
       g.fillStyle = 'rgba(16,14,15,.72)';
       g.fillRect(0, 0, W, H);
-      g.fillStyle = '#e5323e';
+      g.fillStyle = '#8a63e8';
       g.font = "16px 'Press Start 2P', monospace";
       g.fillText('GAME OVER', W / 2, H * 0.36);
       g.fillStyle = '#fff';
       g.font = '700 15px Inter, sans-serif';
       g.fillText(`Score ${score}  ·  Best ${best()}`, W / 2, H * 0.36 + 32);
-      if (newBest) { g.fillStyle = '#ff6670'; g.fillText('New high score!', W / 2, H * 0.36 + 56); }
-      g.fillStyle = '#9b908d';
+      if (newBest) { g.fillStyle = '#b49cff'; g.fillText('New high score!', W / 2, H * 0.36 + 56); }
+      g.fillStyle = '#9a95a8';
       g.font = '600 12px Inter, sans-serif';
       g.fillText('Click or press Space to play again', W / 2, H * 0.36 + (newBest ? 80 : 60));
     }

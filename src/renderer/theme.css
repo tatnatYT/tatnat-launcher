@@ -1,33 +1,33 @@
 /* ==========================================================================
-   tatnat red: the launcher's look. Warm charcoal surfaces, one red accent (the
-   Eclipse Client's red), thin borders and small radii. No glass, glow or
+   Eclipse purple: the launcher's look. Cool charcoal surfaces, one purple accent (from the
+   Eclipse logo), thin borders and small radii. No glass, glow or
    drifting backgrounds: the pixel font is kept for the wordmark and PLAY only.
    Loaded last, so it overrides style.css / cool.css / home.css.
    ========================================================================== */
 
 :root {
-  --bg: #100e0f;
-  --side: #0b0a0a;
-  --panel: #171415;
-  --panel-2: #1f1b1c;
-  --panel-3: #282224;
-  --line: #2a2426;
-  --line-2: #3a3134;
-  --text: #f2ece9;
-  --muted: #9b908d;
-  --faint: #675d5b;
-  --accent: #e5323e;
-  --accent-dark: #a31c26;
-  --accent-light: #ff6670;
-  --accent-soft: rgba(229, 50, 62, .1);
-  --ok: #e5323e;
-  --ok-soft: rgba(229, 50, 62, .12);
+  --bg: #0f0e13;
+  --side: #0b0a0e;
+  --panel: #16141c;
+  --panel-2: #1d1a25;
+  --panel-3: #26222f;
+  --line: #2a2634;
+  --line-2: #3a3547;
+  --text: #efedf4;
+  --muted: #9a95a8;
+  --faint: #67627a;
+  --accent: #8a63e8;
+  --accent-dark: #5b3fae;
+  --accent-light: #b49cff;
+  --accent-soft: rgba(138, 99, 232, .1);
+  --ok: #8a63e8;
+  --ok-soft: rgba(138, 99, 232, .12);
   --danger: #ff5a5f;
   --r: 6px;
   --r-sm: 4px;
 }
 
-::selection { background: rgba(229, 50, 62, .5); color: #fff; }
+::selection { background: rgba(138, 99, 232, .5); color: #fff; }
 html, body { background: var(--bg); font-size: 13.5px; }
 body::before, body::after, main::before { display: none !important; animation: none !important; }
 * { backdrop-filter: none !important; }
@@ -90,8 +90,8 @@ body::before, body::after, main::before { display: none !important; animation: n
 .status-card:hover, .account-card:hover, .update-card:hover { border-color: var(--line-2) !important; }
 .status-light { width: 8px; height: 8px; background: var(--faint); }
 .status-card.ready .status-light, .status-card.running .status-light { background: var(--ok); animation: none; box-shadow: 0 0 0 3px var(--ok-soft); }
-.status-card.busy .status-light { background: #ff6670; }
-.update-card { border-color: rgba(229, 50, 62, .35) !important; }
+.status-card.busy .status-light { background: #b49cff; }
+.update-card { border-color: rgba(138, 99, 232, .35) !important; }
 .update-icon { background: var(--ok-soft) !important; color: var(--ok); border-radius: var(--r-sm); font-size: 0; }
 .update-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .update-card.ready .update-icon { background: var(--ok) !important; color: #ffffff; }
@@ -117,7 +117,7 @@ body::before, body::after, main::before { display: none !important; animation: n
   background: var(--accent) !important; border: 0; color: #fff; border-radius: var(--r-sm);
   box-shadow: inset 0 -2px 0 var(--accent-dark) !important; font-weight: 600;
 }
-.ghost-btn.accent:hover, .install-btn:not(:disabled):hover { background: #f03d49 !important; filter: none; }
+.ghost-btn.accent:hover, .install-btn:not(:disabled):hover { background: #9873f0 !important; filter: none; }
 .install-btn.done { background: transparent !important; color: var(--muted); border: 1px solid var(--line); box-shadow: none !important; }
 .install-btn.busy { background: var(--panel-2) !important; color: var(--muted); box-shadow: none !important; }
 .install-btn.stop { background: #3a1d20 !important; color: #ff8a90; box-shadow: none !important; border: 1px solid #5a262b; }
@@ -126,7 +126,7 @@ input:not(.switch):not([type="range"]), select {
   background: var(--panel) !important; border: 1px solid var(--line); border-radius: var(--r-sm);
   color: var(--text); height: 40px;
 }
-input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(229, 50, 62, .15) !important; }
+input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(138, 99, 232, .15) !important; }
 .search { margin: 0 30px 12px; }
 .search svg { top: 11px; }
 
@@ -135,8 +135,8 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .segmented button:hover { color: var(--text); }
 .segmented button.on { background: var(--accent) !important; color: #fff; box-shadow: inset 0 -2px 0 var(--accent-dark) !important; }
 .segmented.small { height: 34px; }
-.segmented button.boost svg { fill: #ff6670; }
-.segmented button.boost.on { background: #c92833 !important; box-shadow: inset 0 -2px 0 #7a141c !important; }
+.segmented button.boost svg { fill: #b49cff; }
+.segmented button.boost.on { background: #6f4cc9 !important; box-shadow: inset 0 -2px 0 #3d2a78 !important; }
 
 .chips button { border-radius: var(--r-sm); border-color: var(--line); color: var(--muted); }
 .chips button.on { background: var(--accent-soft); border-color: var(--accent); color: #fff; }
@@ -179,8 +179,8 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 }
 .row-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .row-icon:hover { color: #fff; border-color: var(--line-2); background: var(--panel-3); }
-.row-icon.update { color: var(--ok); border-color: rgba(229, 50, 62, .35); background: var(--ok-soft); }
-.row-icon.update:hover { color: #ff9aa1; border-color: var(--ok); background: rgba(229, 50, 62, .2); }
+.row-icon.update { color: var(--ok); border-color: rgba(138, 99, 232, .35); background: var(--ok-soft); }
+.row-icon.update:hover { color: #cbbcff; border-color: var(--ok); background: rgba(138, 99, 232, .2); }
 .row-icon:disabled { opacity: .45; cursor: default; }
 
 /* version picker */
@@ -204,7 +204,7 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .vp-row.mine { cursor: default; background: var(--accent-soft); }
 .vp-num { font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vp-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 3px; color: var(--muted); background: var(--panel-3); }
-.vp-tag[data-type="beta"] { color: #ff6670; background: rgba(229, 50, 62, .12); }
+.vp-tag[data-type="beta"] { color: #b49cff; background: rgba(138, 99, 232, .12); }
 .vp-tag[data-type="alpha"] { color: #ff8a90; background: rgba(255, 90, 95, .12); }
 .vp-tag[data-type="mine"] { color: #fff; background: var(--accent); }
 .vp-date { font-size: 11.5px; color: var(--faint); min-width: 78px; text-align: right; }
@@ -212,8 +212,8 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 /* ---------- Mods > Installed ---------- */
 .installed-bar { padding: 0 30px; margin-bottom: 4px; }
 .installed-bar span { color: var(--muted); }
-#updateAll { background: var(--ok) !important; color: #ffffff; box-shadow: inset 0 -2px 0 #a31c26 !important; border: 0; font-weight: 700; }
-#updateAll:hover { background: #f03d49 !important; }
+#updateAll { background: var(--ok) !important; color: #ffffff; box-shadow: inset 0 -2px 0 #5b3fae !important; border: 0; font-weight: 700; }
+#updateAll:hover { background: #9873f0 !important; }
 .installed-head { padding: 0 30px; margin: 20px 0 8px; color: var(--faint); font-size: 11px; letter-spacing: .14em; }
 
 /* ---------- play tab ---------- */
@@ -251,7 +251,7 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
   text-shadow: 0 2px 0 var(--accent-dark); height: 50px;
 }
 .play-btn::after { display: none !important; }
-.play-btn:hover { background: #f03d49 !important; filter: none; transform: none; }
+.play-btn:hover { background: #9873f0 !important; filter: none; transform: none; }
 .play-btn:active { transform: translateY(1px); box-shadow: inset 0 -3px 0 var(--accent-dark) !important; }
 .play-btn.running { background: #2a1416 !important; color: #ff8a90; text-shadow: none; box-shadow: inset 0 0 0 1px #5a262b !important; }
 
@@ -274,7 +274,7 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .badge { color: var(--accent-light); }
 .creator { background: var(--panel) !important; }
 .creator h3 { color: #fff; }
-.boost-count { color: #ff6670; border-radius: var(--r-sm); }
+.boost-count { color: #b49cff; border-radius: var(--r-sm); }
 .pack-new { border: 1px dashed var(--line-2) !important; background: transparent !important; }
 .pack-new:hover { border-color: var(--accent) !important; color: #fff; }
 .pack-new .plus { color: var(--accent); }
@@ -290,10 +290,10 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .drop-zone { border: 2px dashed var(--accent); border-radius: 8px; background: rgba(16, 14, 15, .92); }
 .drop-zone div { color: #fff; }
 
-#log { background: #0a0909; border: 1px solid var(--line); border-radius: var(--r); color: #c9bfbb; }
+#log { background: #0a090d; border: 1px solid var(--line); border-radius: var(--r); color: #c4bed2; }
 
-::-webkit-scrollbar-thumb { background: #2f292b; border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: #4a3f42; background-clip: padding-box; border: 3px solid transparent; }
+::-webkit-scrollbar-thumb { background: #2e2a38; border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #4a4459; background-clip: padding-box; border: 3px solid transparent; }
 
 /* splash */
 #splash { background: var(--bg) !important; }
@@ -305,7 +305,7 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .boost-tag { background: var(--accent-soft); color: var(--accent-light); font-weight: 800; font-size: 12px; border-radius: var(--r-sm); }
 
 /* ---------- Flappy tatnat (Play tab) ---------- */
-.flappy { flex: 1; min-height: 220px; display: flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: #141012; }
+.flappy { flex: 1; min-height: 220px; display: flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: #120f1a; }
 .flappy canvas { flex: 1; width: 100%; height: 100%; display: block; cursor: pointer; image-rendering: pixelated; }
 #tab-play .dock { margin-top: 0; }
 #tab-play .home-tiles, #tab-play .hero-text, #tab-play .dock { flex: none; }

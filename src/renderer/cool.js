@@ -110,7 +110,7 @@
   wrap.append(h1, splashText);
 
   // ---------- PLAY: block burst ----------
-  const COLORS = ['#6cbf3f', '#86603a', '#8a8a8a', '#4fe3e0', '#ff6670', '#4fa52c'];
+  const COLORS = ['#6cbf3f', '#86603a', '#8a8a8a', '#4fe3e0', '#b49cff', '#4fa52c'];
   document.getElementById('play').addEventListener('click', e => {
     const btn = e.currentTarget;
     if (btn.disabled || btn.classList.contains('running')) return;
