@@ -6,6 +6,7 @@ const path = require('path');
 const { api, pickVersion } = require('./modrinth');
 const { downloadFile } = require('./download');
 const { readPackMeta } = require('./filemeta');
+const { identify } = require('./identify');
 
 const packsDir = dir => path.join(dir, 'resourcepacks');
 const indexFile = dir => path.join(dir, 'resourcepacks.json');
@@ -60,6 +61,13 @@ async function list(dir) {
   const enabled = new Set(await enabledPacks(dir));
   let names = [];
   try { names = await fsp.readdir(packsDir(dir)); } catch { /* none yet */ }
+  // Zips Modrinth knows by their hash are tracked like ones installed from Modrinth.
+  const trackedNames = new Set(Object.values(index).map(x => x.filename));
+  const known = await identify(names.filter(n => /\.zip$/i.test(n) && !trackedNames.has(n)).map(n => path.join(packsDir(dir), n)));
+  for (const [file, hit] of known) {
+    if (index[hit.projectId]) continue;
+    index[hit.projectId] = { title: hit.title, icon: hit.icon, filename: path.basename(file), versionNumber: hit.versionNumber, versionId: hit.versionId };
+  }
   const out = [];
   for (const name of names) {
     const full = path.join(packsDir(dir), name);

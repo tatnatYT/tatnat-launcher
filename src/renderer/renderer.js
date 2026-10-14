@@ -20,12 +20,18 @@ const cleanError = err => String(err?.message || err).replace(/^Error invoking r
 // Keep the reader's scroll position and don't replay the entrance animation for those
 // refreshes; a list that only held a message (new search, first load) still animates in.
 function resetList(list) {
-  const top = list.scrollTop;
+  // Keep the scroll position of the list and of whatever panel scrolls around it (Mods > Installed
+  // scrolls as a whole), so removing or toggling something doesn't jump back to the top.
+  const scrolled = [];
+  for (let el = list; el && el !== document.body; el = el.parentElement) if (el.scrollTop) scrolled.push([el, el.scrollTop]);
   const refresh = !!list.querySelector('.mod-card, .pack-card, .account-row, .boost-row');
+  if (refresh) list.style.minHeight = `${list.offsetHeight}px`; // no collapse while it's empty
   list.replaceChildren();
   if (refresh) list.dataset.quiet = '1';
+  for (const [el, top] of scrolled) el.scrollTop = top;
   requestAnimationFrame(() => {
-    list.scrollTop = top;
+    list.style.minHeight = '';
+    for (const [el, top] of scrolled) el.scrollTop = top;
     delete list.dataset.quiet;
   });
 }

@@ -5,6 +5,7 @@ const fsp = fs.promises;
 const path = require('path');
 const { downloadFile } = require('./download');
 const { readModMeta } = require('./filemeta');
+const { identify } = require('./identify');
 
 const API = 'https://api.modrinth.com/v2';
 const HEADERS = { 'User-Agent': 'tatnatYT/tatnat-launcher/0.3.0 (github.com/tatnatYT/tatnat-launcher)' };
@@ -62,13 +63,25 @@ async function listInstalled(dir) {
     tracked.add(mod.filename);
     out.push({ id, ...mod, enabled });
   }
-  await writeIndex(dir, index);
 
   // Jars that didn't come from Modrinth through us.
   let files = [];
   try { files = await fsp.readdir(modsDir(dir)); } catch { /* no mods folder yet */ }
-  for (const f of files) {
-    if (!/\.jar(\.disabled)?$/i.test(f)) continue;
+  const untracked = files.filter(f => /\.jar(\.disabled)?$/i.test(f) && !tracked.has(f.replace(/\.disabled$/i, '')));
+  // Ones Modrinth knows by their hash become normal Modrinth mods (updatable, switchable).
+  const known = await identify(untracked.map(f => path.join(modsDir(dir), f)));
+  for (const f of untracked) {
+    const hit = known.get(path.join(modsDir(dir), f));
+    if (!hit || index[hit.projectId]) continue;
+    const filename = f.replace(/\.disabled$/i, '');
+    index[hit.projectId] = { title: hit.title, slug: hit.slug, icon: hit.icon, versionId: hit.versionId,
+      versionNumber: hit.versionNumber, filename, dependency: false };
+    tracked.add(filename);
+    out.push({ id: hit.projectId, ...index[hit.projectId], enabled: !/\.disabled$/i.test(f) });
+  }
+  await writeIndex(dir, index);
+
+  for (const f of untracked) {
     const filename = f.replace(/\.disabled$/i, '');
     if (tracked.has(filename)) continue;
     const meta = readModMeta(path.join(modsDir(dir), f));

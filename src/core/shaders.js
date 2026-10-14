@@ -6,6 +6,7 @@ const fsp = fs.promises;
 const path = require('path');
 const { downloadFile } = require('./download');
 const modrinth = require('./modrinth');
+const { identify } = require('./identify');
 
 const shadersDir = dir => path.join(dir, 'shaderpacks');
 const indexFile = dir => path.join(dir, 'shaders.json');
@@ -55,6 +56,13 @@ async function list({ dir, loader }) {
   const on = await active(dir, loader);
   let names = [];
   try { names = await fsp.readdir(shadersDir(dir)); } catch { /* none yet */ }
+  // Zips Modrinth knows by their hash are tracked like ones installed from Modrinth.
+  const trackedNames = new Set(Object.values(index).map(x => x.filename));
+  const known = await identify(names.filter(n => /\.zip$/i.test(n) && !trackedNames.has(n)).map(n => path.join(shadersDir(dir), n)));
+  for (const [file, hit] of known) {
+    if (index[hit.projectId]) continue;
+    index[hit.projectId] = { title: hit.title, icon: hit.icon, filename: path.basename(file), versionNumber: hit.versionNumber, versionId: hit.versionId };
+  }
   const out = [];
   for (const name of names) {
     const full = path.join(shadersDir(dir), name);
