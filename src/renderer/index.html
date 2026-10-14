@@ -211,6 +211,10 @@
           <button class="ghost-btn" id="checkUpdates">Check for updates</button>
           <button class="ghost-btn accent" id="updateAll" hidden>Update all</button>
         </div>
+        <div class="search installed-search">
+          <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <input id="installedSearch" type="search" placeholder="Search installed mods, texture packs and shaders…" spellcheck="false" autocomplete="off">
+        </div>
         <h3 class="installed-head">Mods</h3>
         <div class="mod-list" id="installedList"></div>
         <h3 class="installed-head">Texture packs <span id="installedPacksCount"></span></h3>
@@ -262,6 +266,10 @@
       </div>
       <div class="mods-installed" id="packsInstalled" hidden>
         <p class="hint">Packs that are switched on load in the game, the bottom one on top.</p>
+        <div class="search installed-search">
+          <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <input id="packsInstalledSearch" type="search" placeholder="Search installed texture packs…" spellcheck="false" autocomplete="off">
+        </div>
         <div class="mod-list" id="packsList"></div>
       </div>
     </section>
@@ -291,6 +299,10 @@
       </div>
       <div class="mods-installed" id="shadersInstalled" hidden>
         <p class="hint">One shader is active at a time. You can also switch in game: Options, Video Settings, Shader Packs.</p>
+        <div class="search installed-search">
+          <svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 015.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z"/></svg>
+          <input id="shadersInstalledSearch" type="search" placeholder="Search installed shaders…" spellcheck="false" autocomplete="off">
+        </div>
         <div class="mod-list" id="shadersList"></div>
       </div>
     </section>

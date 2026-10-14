@@ -572,7 +572,9 @@ function renderInstalledMods() {
   $('installedCount').textContent = mods.installed.size ? `(${mods.installed.size})` : '';
   setBadge('modsBadge', mods.installed.size);
   if (!mods.installed.size) { list.append(listMessage(`No mods here yet. Install some, or add your own .jar files.`)); return; }
-  for (const [id, m] of mods.installed) {
+  const shown = [...mods.installed].filter(([id, m]) => matchesSearch('installedSearch', { ...m, slug: m.slug || id }));
+  if (!shown.length) list.append(noMatch());
+  for (const [id, m] of shown) {
     const card = document.createElement('div');
     card.className = `mod-card${m.enabled ? '' : ' disabled'}`;
     const toggle = document.createElement('input');
@@ -837,15 +839,32 @@ function renderInstalledExtras() {
   resetList(pl);
   $('installedPacksCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
   if (!packs.installed.length) pl.append(listMessage('No texture packs for this version.'));
-  for (const p of packs.installed) pl.append(packCard(p));
+  const pShown = packs.installed.filter(p => matchesSearch('installedSearch', p));
+  if (packs.installed.length && !pShown.length) pl.append(noMatch());
+  for (const p of pShown) pl.append(packCard(p));
   const sl = $('installedShadersList');
   resetList(sl);
   $('installedShadersCount').textContent = shaderState.installed.length ? `(${shaderState.installed.length})` : '';
   if (!shadersSupported()) sl.append(listMessage('Shaders need a mod loader (Fabric, FPS Boost, NeoForge or Forge).'));
   else if (!shaderState.installed.length) sl.append(listMessage('No shaders for this version.'));
-  for (const p of shaderState.installed) sl.append(shaderCard(p));
+  const sShown = shaderState.installed.filter(p => matchesSearch('installedSearch', p));
+  if (shadersSupported() && shaderState.installed.length && !sShown.length) sl.append(noMatch());
+  for (const p of sShown) sl.append(shaderCard(p));
   updateUpdatesBar();
 }
+
+// ---------- search inside the Installed lists ----------
+// Matches name, file name and Modrinth slug; every word typed has to appear somewhere.
+function matchesSearch(inputId, item) {
+  const q = ($(inputId)?.value || '').trim().toLowerCase();
+  if (!q) return true;
+  const hay = [item.title, item.filename, item.name, item.slug].filter(Boolean).join(' ').toLowerCase();
+  return q.split(/\s+/).every(w => hay.includes(w));
+}
+function noMatch() { return listMessage('Nothing matches your search.'); }
+$('installedSearch').addEventListener('input', () => { renderInstalledMods(); renderInstalledExtras(); });
+$('packsInstalledSearch').addEventListener('input', () => renderInstalledPacks());
+$('shadersInstalledSearch').addEventListener('input', () => renderInstalledShaders());
 
 function renderAllInstalled() {
   renderInstalledMods();
@@ -976,7 +995,9 @@ function renderInstalledPacks() {
   $('packsCount').textContent = packs.installed.length ? `(${packs.installed.length})` : '';
   setBadge('packsBadge', packs.installed.filter(p => p.enabled).length);
   if (!packs.installed.length) { list.append(listMessage('No texture packs yet. Install one, or add your own .zip.')); return; }
-  for (const p of packs.installed) list.append(packCard(p));
+  const shown = packs.installed.filter(p => matchesSearch('packsInstalledSearch', p));
+  if (!shown.length) list.append(noMatch());
+  for (const p of shown) list.append(packCard(p));
   renderInstalledExtras();
 }
 
@@ -1152,7 +1173,9 @@ function renderInstalledShaders() {
   $('shadersCount').textContent = shaderState.installed.length ? `(${shaderState.installed.length})` : '';
   setBadge('shadersBadge', shaderState.installed.some(p => p.enabled) ? 1 : 0);
   if (!shaderState.installed.length) { list.append(listMessage('No shaders yet. Install one, or add your own .zip.')); return; }
-  for (const p of shaderState.installed) list.append(shaderCard(p));
+  const shown = shaderState.installed.filter(p => matchesSearch('shadersInstalledSearch', p));
+  if (!shown.length) list.append(noMatch());
+  for (const p of shown) list.append(shaderCard(p));
   renderInstalledExtras();
 }
 

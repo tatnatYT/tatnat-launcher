@@ -336,3 +336,8 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
   letter-spacing: 0; color: var(--faint); -webkit-text-fill-color: var(--faint); border: 1px solid var(--line-2);
   border-radius: 3px; padding: 0 4px; line-height: 14px;
 }
+
+/* Search inside Mods > Installed stays at the top while the page scrolls under it. */
+#modsInstalled .installed-search { position: sticky; top: 0; z-index: 3; margin: 0; padding: 6px 30px 12px; background: var(--bg); }
+#modsInstalled .installed-search svg { left: 42px; top: 17px; }
+.installed-search input::-webkit-search-cancel-button { filter: invert(.7); cursor: pointer; }
