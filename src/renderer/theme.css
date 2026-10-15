@@ -439,3 +439,8 @@ html[data-bgfx="off"] .bg-sparkles, html[data-bgfx="off"] .bg-sweep { display: n
 html[data-bgfx="off"] .bg-layer.enter, html[data-bgfx="off"] .bg-layer.leave { animation: none; }
 html[data-bgfx="off"] .bg-layer.leave { opacity: 0; }
 html[data-bgfx="off"] body::before, html[data-bgfx="off"] body::after { animation: none; }
+
+/* Minecraft-style name tag in the skin preview: skinview3d asks for a font named "Minecraft". */
+@font-face { font-family: 'Minecraft'; src: url('fonts/monocraft.ttf') format('truetype'); font-display: block; }
+/* The Play / Stop / Loading button in the normal font. */
+.play-btn { font-family: Inter, system-ui, sans-serif !important; font-weight: 800; font-size: 17px; letter-spacing: .14em; }

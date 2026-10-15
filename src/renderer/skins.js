@@ -21,15 +21,94 @@
     viewer = new skinview3d.SkinViewer({ canvas, width: 300, height: 400, enableControls: true });
     viewer.background = null;
     viewer.fov = 50;
-    viewer.zoom = 0.6;
+    viewer.zoom = 0.52;
     viewer.autoRotate = true;
     viewer.autoRotateSpeed = 0.6;
     viewer.animation = new skinview3d.WalkingAnimation();
     viewer.animation.speed = 0.8;
+    center();
+    window.skinViewerDebug = { viewer, setNameTag };
     // Stop spinning once the player grabs the model.
     canvas.addEventListener('pointerdown', () => { viewer.autoRotate = false; });
     new ResizeObserver(resize).observe(canvas.parentElement);
     resize();
+  }
+
+  // The name tag above the head, exactly like in game: Minecraft's own font (textures/font/ascii.png,
+  // read from a game version already on this PC) with its real letter widths, white text on a
+  // see-through black box. Before any version is downloaded it falls back to Monocraft (theme.css).
+  let mcFont = null; // { img, widths[256] }
+  async function loadMcFont() {
+    if (mcFont !== null) return mcFont;
+    mcFont = false;
+    try {
+      const url = await api.mcFont();
+      if (!url) return mcFont;
+      const img = new Image();
+      await new Promise((ok, fail) => { img.onload = ok; img.onerror = fail; img.src = url; });
+      const cell = img.width / 16;
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const px = g.getImageData(0, 0, c.width, c.height).data;
+      // Like the game: a glyph is as wide as its right-most lit column; space is 4 wide.
+      const widths = [];
+      for (let ch = 0; ch < 256; ch++) {
+        const cx = (ch % 16) * cell, cy = Math.floor(ch / 16) * cell;
+        let w = 0;
+        for (let x = cell - 1; x >= 0 && !w; x--) {
+          for (let y = 0; y < cell; y++) if (px[((cy + y) * c.width + cx + x) * 4 + 3] > 0) { w = x + 1; break; }
+        }
+        widths[ch] = ch === 32 ? cell / 2 : w;
+      }
+      mcFont = { img, cell, widths };
+    } catch { mcFont = false; }
+    return mcFont;
+  }
+
+  function mcNameTag(name, font) {
+    const S = 8, cell = font.cell, k = 8 / cell; // draw at 8 px per glyph cell, S canvas px per font px
+    const chars = [...name].map(ch => ch.charCodeAt(0) < 256 ? ch.charCodeAt(0) : 63);
+    const textW = chars.reduce((n, ch) => n + Math.round(font.widths[ch] * k) + 1, 0) - 1;
+    const c = document.createElement('canvas');
+    c.width = (textW + 2) * S; c.height = 9 * S;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.fillRect(0, 0, c.width, c.height);
+    let x = 1;
+    // Glyphs drawn white: the font image is white already.
+    for (const ch of chars) {
+      g.drawImage(font.img, (ch % 16) * cell, Math.floor(ch / 16) * cell, cell, cell, x * S, 1 * S, 8 * S, 8 * S);
+      x += Math.round(font.widths[ch] * k) + 1;
+    }
+    const tag = new skinview3d.NameTagObject(name, { repaintAfterLoaded: false });
+    tag.textMaterial.map.image = c;
+    tag.textMaterial.map.needsUpdate = true;
+    tag.scale.x = c.width / c.height * tag.height;
+    tag.scale.y = tag.height;
+    return tag;
+  }
+
+  async function setNameTag(name) {
+    if (name) {
+      const font = await loadMcFont();
+      if (font) name = mcNameTag(name, font);
+      else try { await document.fonts.load('48px Minecraft', name); } catch { /* draws with what's there */ }
+    }
+    viewer.nameTag = name;
+    center();
+  }
+
+  // Keep the model (and its name tag) in the middle of the space between the buttons above and the
+  // panel below: skinview3d centres the body itself, so shift it down a little, more with a tag.
+  function center() {
+    if (!viewer) return;
+    const dy = viewer.nameTag ? -8.5 : -5;
+    viewer.playerWrapper.position.y = dy;
+    // skinview3d places the tag from the head's world height, which already includes dy.
+    viewer.nameTagYOffset = (viewer.playerObject.ears.visible ? 25 : 20) - dy;
   }
 
   function resize() {
@@ -82,7 +161,7 @@
     if (!viewer || !sel) return;
     $('skinLoading').hidden = true;
     await viewer.loadSkin(sel.texture, { model: sel.variant === 'slim' ? 'slim' : 'default' });
-    viewer.nameTag = sel.kind === 'current' ? state.profile?.name || null : null;
+    await setNameTag(sel.kind === 'current' ? state.profile?.name || null : null);
     $('skinPreviewName').textContent = sel.name;
     $('skinPreviewMeta').textContent = sel.kind === 'current' ? 'Wearing now' : sel.kind === 'default' ? 'Minecraft skin' : 'From your skins';
     for (const x of $('skinVariant').children) x.classList.toggle('on', x.dataset.variant === sel.variant);

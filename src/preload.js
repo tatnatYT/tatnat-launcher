@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('launcher', {
   removeAccount: id => ipcRenderer.invoke('accounts:remove', id),
   listVersions: () => ipcRenderer.invoke('versions:list'),
   skinsState: () => ipcRenderer.invoke('skins:state'),
+  mcFont: () => ipcRenderer.invoke('skins:mcFont'),
   applySkin: opts => ipcRenderer.invoke('skins:apply', opts),
   setCape: capeId => ipcRenderer.invoke('skins:cape', capeId),
   importSkins: opts => ipcRenderer.invoke('skins:import', opts),

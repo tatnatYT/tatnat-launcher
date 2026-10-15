@@ -195,6 +195,30 @@ async function skinAccount() {
 
 const skinErr = err => { throw new Error(err instanceof skins.SkinError || err instanceof auth.AuthError ? err.message : `Skin change failed: ${err.message}`); };
 
+// Minecraft's own font image (textures/font/ascii.png) from a game version already downloaded on this
+// PC, so the skin preview's name tag looks exactly like in game. Null when no version is installed.
+let mcFontCache;
+ipcMain.handle('skins:mcFont', () => {
+  if (mcFontCache) return mcFontCache;
+  const versionsDir = path.join(ROOT, 'versions');
+  let jars = [];
+  try {
+    for (const id of fs.readdirSync(versionsDir)) {
+      const jar = path.join(versionsDir, id, `${id}.jar`);
+      if (fs.existsSync(jar)) jars.push({ jar, time: fs.statSync(jar).mtimeMs });
+    }
+  } catch { return null; }
+  jars.sort((a, b) => b.time - a.time);
+  const AdmZip = require('adm-zip');
+  for (const { jar } of jars) {
+    try {
+      const entry = new AdmZip(jar).getEntry('assets/minecraft/textures/font/ascii.png');
+      if (entry) return (mcFontCache = 'data:image/png;base64,' + entry.getData().toString('base64'));
+    } catch { /* not a readable jar: try the next */ }
+  }
+  return null;
+});
+
 ipcMain.handle('skins:state', async () => {
   const store = readAccounts();
   const active = store.accounts.find(a => a.id === store.active);
