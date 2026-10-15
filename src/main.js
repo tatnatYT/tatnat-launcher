@@ -615,7 +615,7 @@ ipcMain.handle('modpacks:export', async (_e, { id }) => {
     filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }],
   });
   if (res.canceled || !res.filePath) return null;
-  const loaderVersion = meta.loaderVersion || loaderVersionOf(await installFabric(ROOT, meta.mcVersion), meta.mcVersion);
+  const loaderVersion = loaderVersionOf(await installFabric(ROOT, meta.mcVersion, meta.loaderVersion), meta.mcVersion);
   const result = await modpacks.exportPack(ROOT, id, res.filePath, { loaderVersion });
   shell.showItemInFolder(res.filePath);
   return { ...result, file: res.filePath };
