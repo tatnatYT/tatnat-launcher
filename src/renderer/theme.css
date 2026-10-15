@@ -341,3 +341,17 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 #modsInstalled .installed-search { position: sticky; top: 0; z-index: 3; margin: 0; padding: 6px 30px 12px; background: var(--bg); }
 #modsInstalled .installed-search svg { left: 42px; top: 17px; }
 .installed-search input::-webkit-search-cancel-button { filter: invert(.7); cursor: pointer; }
+
+/* ---------- Eclipse wordmark: Orbitron (bundled, works offline) ---------- */
+@font-face { font-family: 'Orbitron'; src: url('fonts/orbitron.woff2') format('woff2'); font-weight: 400 900; font-display: block; }
+.brand-text, .splash-title {
+  font-family: 'Orbitron', Inter, sans-serif !important; font-weight: 900; text-transform: uppercase;
+}
+.brand-text { font-size: 17px; letter-spacing: 2.5px; gap: 5px; line-height: 1; }
+.brand-text span {
+  font-family: 'Orbitron', Inter, sans-serif; font-size: 8.5px; font-weight: 700; letter-spacing: 4.2px;
+  display: flex; align-items: center; gap: 8px;
+}
+.brand-text .version-pill { font-family: Inter, system-ui, sans-serif; letter-spacing: .02em; font-size: 9.5px; text-transform: none; }
+.splash-title { letter-spacing: 6px; }
+.splash-title span { font-weight: 700; letter-spacing: 10px; }
