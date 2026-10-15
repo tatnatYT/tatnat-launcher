@@ -108,7 +108,15 @@
   </aside>
 
   <main>
+    <!-- Background art (assets/backgrounds), switched with the arrows on the Play tab. -->
+    <div class="bg-stage" id="bgStage"></div>
+    <div class="bg-sparkles" id="bgSparkles"></div>
     <section class="tab active" id="tab-play">
+      <div class="bg-switch" id="bgSwitch">
+        <button class="bg-arrow" id="bgPrev" title="Previous background"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="bg-dots" id="bgDots"></div>
+        <button class="bg-arrow" id="bgNext" title="Next background"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
       <div class="hero-text">
         <h1 id="heroVersion">Minecraft</h1>
         <p id="heroSub">Pick a version and press play.</p>
@@ -601,5 +609,6 @@
   <script src="renderer.js"></script>
   <script src="skins.js"></script>
   <script src="flappy.js"></script>
+  <script src="backgrounds.js"></script>
 </body>
 </html>

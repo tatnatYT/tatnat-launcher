@@ -358,3 +358,64 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 /* "LAUNCHER" is longer than "CLIENT": a little tighter so the version pill stays on one line. */
 .brand-text span { letter-spacing: 2.6px; gap: 7px; }
 .brand-text .version-pill { white-space: nowrap; }
+
+/* ---------- background art (backgrounds.js) ---------- */
+.bg-stage, .bg-sparkles { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.bg-layer { position: absolute; inset: 0; }
+/* The whole picture fits; the space around it is a soft, blurred copy of the same picture. */
+.bg-fill { position: absolute; inset: -40px; background: center / cover no-repeat; filter: blur(28px) brightness(.55) saturate(1.2); }
+.bg-img {
+  position: absolute; inset: 0; background: center / contain no-repeat; image-rendering: pixelated;
+  animation: bg-drift 26s ease-in-out infinite alternate;
+}
+@keyframes bg-drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.035) translate(-1.2%, -.8%); } }
+
+/* Swapping: the old picture zooms out and blurs away, the new one sharpens in behind a light sweep. */
+.bg-layer.enter { animation: bg-enter .9s cubic-bezier(.2,.8,.2,1) both; }
+.bg-layer.leave { animation: bg-leave .9s cubic-bezier(.4,0,.2,1) both; }
+@keyframes bg-enter { from { opacity: 0; transform: scale(1.12); filter: blur(14px) brightness(1.6); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes bg-leave { from { opacity: 1; transform: none; filter: none; } to { opacity: 0; transform: scale(.92); filter: blur(10px); } }
+.bg-sweep {
+  position: absolute; inset: -20%; z-index: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(180,156,255,.0) 40%, rgba(180,156,255,.38) 50%, rgba(255,255,255,.18) 52%, transparent 62%);
+  animation: bg-sweep .9s cubic-bezier(.4,0,.2,1) both;
+}
+.bg-sweep.back { transform: scaleX(-1); }
+@keyframes bg-sweep { from { translate: -60% 0; opacity: 0; } 25% { opacity: 1; } to { translate: 60% 0; opacity: 0; } }
+
+/* Twinkling pixel stars and the odd shooting star over the picture. */
+.bg-star { position: absolute; width: 3px; height: 3px; background: #e9e2ff; box-shadow: 0 0 6px 1px rgba(180,156,255,.8); opacity: 0; animation: bg-twinkle var(--d, 4s) ease-in-out var(--delay, 0s) infinite; }
+.bg-star.big { width: 4px; height: 4px; }
+@keyframes bg-twinkle { 0%, 100% { opacity: 0; transform: scale(.6); } 50% { opacity: .9; transform: scale(1.2); } }
+.bg-shoot {
+  position: absolute; width: 140px; height: 2px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.9) 70%, #d9ccff);
+  box-shadow: 0 0 10px rgba(180,156,255,.9); transform: rotate(-28deg);
+  animation: bg-shoot 1.1s ease-out forwards;
+}
+@keyframes bg-shoot { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: -320px 170px; } }
+@media (prefers-reduced-motion: reduce) { .bg-img, .bg-star { animation: none; } .bg-layer.enter, .bg-layer.leave, .bg-sweep { animation-duration: .01s; } }
+/* Keep text readable: darker on the left and at the bottom, and much darker away from the Play tab. */
+main::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(10,9,14,.55) 0%, rgba(10,9,14,.18) 50%, rgba(10,9,14,.04) 100%),
+    linear-gradient(0deg, rgba(10,9,14,.7) 0%, rgba(10,9,14,0) 40%);
+  transition: background-color .3s ease;
+}
+main:not(:has(#tab-play.active))::after { background-color: rgba(12,11,16,.82); }
+.bg-switch {
+  position: absolute; top: 40px; right: 48px; z-index: 2;
+  display: flex; align-items: center; gap: 10px;
+}
+.bg-arrow {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: rgba(15,14,19,.55); border: 1px solid rgba(255,255,255,.14); color: #fff;
+  backdrop-filter: blur(6px); transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.bg-arrow:hover { background: rgba(138,99,232,.45); border-color: rgba(180,156,255,.6); transform: scale(1.06); }
+.bg-arrow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.bg-dots { display: flex; gap: 6px; }
+.bg-dot { width: 7px; height: 7px; padding: 0; border-radius: 50%; border: 0; cursor: pointer; background: rgba(255,255,255,.3); transition: background .15s, transform .15s; }
+.bg-dot.on { background: #b49cff; transform: scale(1.25); }
+.flappy { background: rgba(14,12,20,.12); }

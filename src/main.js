@@ -621,6 +621,19 @@ ipcMain.handle('modpacks:export', async (_e, { id }) => {
   return { ...result, file: res.filePath };
 });
 
+// Copies the bundled main-menu backgrounds (assets/backgrounds/game/*.png, inside the app) to
+// <root>/backgrounds where the game can read them; only files that changed are copied.
+function syncBackgrounds() {
+  const from = path.join(__dirname, '..', 'assets', 'backgrounds', 'game');
+  const to = path.join(ROOT, 'backgrounds');
+  fs.mkdirSync(to, { recursive: true });
+  for (const name of fs.readdirSync(from)) {
+    const src = path.join(from, name), dst = path.join(to, name);
+    if (!fs.existsSync(dst) || fs.statSync(dst).size !== fs.statSync(src).size) fs.writeFileSync(dst, fs.readFileSync(src));
+  }
+  return to;
+}
+
 // The fresh session the in-game account switcher asks for (see core/accountbridge.js).
 async function bridgeSession(id) {
   let account = readAccounts().accounts.find(a => a.id === id);
@@ -749,6 +762,12 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
       extraJvmArgs = [await accountBridge.jvmArg(bridgeSource)];
     } catch (err) {
       send('game:log', `[Eclipse Launcher] In-game account switching is off: ${err.message}\n`);
+    }
+    // The main-menu backgrounds for the Eclipse Client mod (its title screen reads them from here).
+    try {
+      extraJvmArgs.push(`-Dtatnat.backgrounds=${syncBackgrounds()}`);
+    } catch (err) {
+      send('game:log', `[Eclipse Launcher] No main menu backgrounds: ${err.message}\n`);
     }
     entry.child = await launch({
       root: ROOT,

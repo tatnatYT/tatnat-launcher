@@ -102,11 +102,12 @@
 
   function draw(t) {
     g.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-    // sky: dark with a faint red glow at the horizon
+    // sky: see-through, so the launcher's background art shows behind the game
     const sky = g.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#120f1a');
-    sky.addColorStop(1, '#1c1530');
+    sky.addColorStop(0, 'rgba(18,15,26,.18)');
+    sky.addColorStop(1, 'rgba(28,21,48,.42)');
     g.fillStyle = sky;
+    g.clearRect(0, 0, W, H);
     g.fillRect(0, 0, W, H);
 
     // pipes: blocky, red brick style
