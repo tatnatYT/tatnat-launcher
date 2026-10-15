@@ -1,7 +1,7 @@
 {
   "name": "tatnat-client",
   "productName": "Eclipse Launcher",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Eclipse Launcher - a custom Minecraft launcher",
   "author": "tatnat",
   "main": "src/main.js",
