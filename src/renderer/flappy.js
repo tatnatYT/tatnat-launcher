@@ -23,15 +23,16 @@
     img.src = url;
   }
 
-  const size = () => Math.round(Math.max(20, Math.min(34, 30 * unit())));
-  const SPEED = 170, PIPE_W = 58, PIPE_EVERY = 1.55;
-  // Jumps, gravity and the head scale with the height of the game, so it plays the same in any window.
-  const unit = () => Math.max(0.5, (H - 28) / 360);
-  const GRAVITY_AT = () => 1500 * unit(), FLAP_AT = () => -430 * unit();
-  // The opening between pipes grows with the game area (small windows stay playable).
-  const gap = () => Math.max(70, Math.min(150, (H - 28) * 0.42));
+  // The game runs in a fixed world, WORLD_H units tall, scaled to fit the canvas: jumps, gravity, the
+  // gap, the head and the pipe speed are the same at any window size (full screen plays exactly like a
+  // small window; a wider window only shows more of what's coming).
+  const WORLD_H = 388, GROUND = 28;
+  const SPEED = 170, PIPE_W = 58, PIPE_EVERY = 1.55, GRAVITY = 1500, FLAP = -430;
+  const size = () => 30;
+  const gap = () => 150;
 
-  let W = 0, H = 0, dpr = 1;
+  let W = 0, H = 0, dpr = 1; // world size (H is always WORLD_H) and device pixels
+  let SW = 0, SH = 0, scale = 1; // canvas size in CSS pixels and world -> CSS pixels
   let state = 'ready'; // ready | playing | over
   let y, vy, pipes, score, spawn, last = 0, groundX = 0, flash = 0, newBest = false;
 
@@ -51,17 +52,21 @@
   function resize() {
     const r = canvas.getBoundingClientRect();
     dpr = window.devicePixelRatio || 1;
-    W = Math.max(1, Math.round(r.width));
-    H = Math.max(1, Math.round(r.height));
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
+    SW = Math.max(1, Math.round(r.width));
+    SH = Math.max(1, Math.round(r.height));
+    canvas.width = SW * dpr;
+    canvas.height = SH * dpr;
+    scale = SH / WORLD_H;
+    H = WORLD_H;
+    W = SW / scale;
+    // Mid-game resize (e.g. going full screen): the world keeps its size, pipes keep their place.
     if (state !== 'playing') reset();
   }
 
   function flap() {
     if (state === 'over') { if (performance.now() - flash < 450) return; state = 'ready'; reset(); return; }
     if (state === 'ready') state = 'playing';
-    vy = FLAP_AT();
+    vy = FLAP;
   }
 
   function die() {
@@ -74,7 +79,7 @@
   function step(dt) {
     groundX = (groundX - SPEED * dt) % 24;
     if (state !== 'playing') return;
-    vy += GRAVITY_AT() * dt;
+    vy += GRAVITY * dt;
     y += vy * dt;
     spawn -= dt;
     if (spawn <= 0) {
@@ -96,7 +101,7 @@
   }
 
   function draw(t) {
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
     // sky: dark with a faint red glow at the horizon
     const sky = g.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0, '#120f1a');
@@ -133,7 +138,7 @@
     // the head, tilted with the speed
     const bx = W * 0.28;
     const bob = state === 'ready' ? Math.sin(t / 220) * 6 : 0;
-    const tilt = state === 'ready' ? 0 : Math.max(-0.45, Math.min(1.2, vy / (650 * unit())));
+    const tilt = state === 'ready' ? 0 : Math.max(-0.45, Math.min(1.2, vy / 650));
     g.save();
     g.translate(bx, y + bob);
     g.rotate(tilt);
@@ -143,41 +148,42 @@
     if (headReady) g.drawImage(head, -size() / 2, -size() / 2, size(), size());
     g.restore();
 
-    // text
+    // text: in screen pixels, so it stays crisp and readable at any size
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.textAlign = 'center';
     g.fillStyle = '#fff';
     g.font = "20px 'Press Start 2P', monospace";
     if (state !== 'ready') {
       g.fillStyle = 'rgba(0,0,0,.5)';
-      g.fillText(String(score), W / 2 + 3, 46);
+      g.fillText(String(score), SW / 2 + 3, 46);
       g.fillStyle = '#fff';
-      g.fillText(String(score), W / 2, 43);
+      g.fillText(String(score), SW / 2, 43);
     }
     g.textAlign = 'right';
     g.font = '700 12px Inter, sans-serif';
     g.fillStyle = '#9a95a8';
-    g.fillText('BEST ' + best(), W - 14, 24);
+    g.fillText('BEST ' + best(), SW - 14, 24);
     g.textAlign = 'center';
     if (state === 'ready') {
       g.font = "13px 'Press Start 2P', monospace";
-      g.fillText('FLAPPY ' + (window.flappyPlayerName?.() || 'BIRD').toUpperCase(), W / 2, H * 0.24);
+      g.fillText('FLAPPY ' + (window.flappyPlayerName?.() || 'BIRD').toUpperCase(), SW / 2, SH * 0.24);
       g.font = '600 13px Inter, sans-serif';
       g.fillStyle = '#9a95a8';
-      g.fillText('Click or press Space to flap', W / 2, H * 0.24 + 26);
+      g.fillText('Click or press Space to flap', SW / 2, SH * 0.24 + 26);
     }
     if (state === 'over') {
       g.fillStyle = 'rgba(16,14,15,.72)';
-      g.fillRect(0, 0, W, H);
+      g.fillRect(0, 0, SW, SH);
       g.fillStyle = '#8a63e8';
       g.font = "16px 'Press Start 2P', monospace";
-      g.fillText('GAME OVER', W / 2, H * 0.36);
+      g.fillText('GAME OVER', SW / 2, SH * 0.36);
       g.fillStyle = '#fff';
       g.font = '700 15px Inter, sans-serif';
-      g.fillText(`Score ${score}  ·  Best ${best()}`, W / 2, H * 0.36 + 32);
-      if (newBest) { g.fillStyle = '#b49cff'; g.fillText('New high score!', W / 2, H * 0.36 + 56); }
+      g.fillText(`Score ${score}  ·  Best ${best()}`, SW / 2, SH * 0.36 + 32);
+      if (newBest) { g.fillStyle = '#b49cff'; g.fillText('New high score!', SW / 2, SH * 0.36 + 56); }
       g.fillStyle = '#9a95a8';
       g.font = '600 12px Inter, sans-serif';
-      g.fillText('Click or press Space to play again', W / 2, H * 0.36 + (newBest ? 80 : 60));
+      g.fillText('Click or press Space to play again', SW / 2, SH * 0.36 + (newBest ? 80 : 60));
     }
   }
 
@@ -186,7 +192,7 @@
     if (tab.classList.contains('active') && canvas.offsetParent) {
       loadHead();
       const r = canvas.getBoundingClientRect();
-      if (Math.round(r.width) !== W || Math.round(r.height) !== H) resize();
+      if (Math.round(r.width) !== SW || Math.round(r.height) !== SH) resize();
       const dt = Math.min(0.033, (t - (last || t)) / 1000);
       step(dt);
       draw(t);
@@ -196,7 +202,7 @@
   }
 
   // For the launcher's own tests: the game state and a flap.
-  window.flappyDebug = { state: () => ({ state, y, vy, score, H, W, gap: gap(), pipes: pipes.map(p => ({ x: p.x, top: p.top })) }), flap };
+  window.flappyDebug = { state: () => ({ state, y, vy, score, H, W, scale, gap: gap(), pipes: (pipes || []).map(p => ({ x: p.x, top: p.top })) }), flap };
 
   canvas.addEventListener('mousedown', e => { e.preventDefault(); document.activeElement?.blur(); flap(); });
   // Space flaps while the Play tab is open and you're not typing somewhere.
