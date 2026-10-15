@@ -9,6 +9,17 @@
   const sparkles = document.getElementById('bgSparkles');
   const dots = document.getElementById('bgDots');
   let index = 0, layer = null, busy = false;
+  // Settings > Background effects: full | smooth | off (kept on this PC).
+  let fx = 'full';
+  try { fx = localStorage.getItem('bg-effects') || 'full'; } catch { /* storage off */ }
+  function setFx(v) {
+    fx = v;
+    document.documentElement.dataset.bgfx = v;
+    try { localStorage.setItem('bg-effects', v); } catch { /* storage off */ }
+    document.querySelectorAll('#bgEffects button').forEach(b => b.classList.toggle('on', b.dataset.fx === v));
+  }
+  setFx(fx);
+  document.querySelectorAll('#bgEffects button').forEach(b => b.addEventListener('click', () => setFx(b.dataset.fx)));
   try { index = Math.min(COUNT - 1, Math.max(0, Number(localStorage.getItem('bg-index')) || 0)); } catch { /* storage off */ }
 
   function makeLayer(i) {
@@ -43,7 +54,7 @@
       sweep.remove();
       layer.classList.remove('enter');
       busy = false;
-    }, 920);
+    }, fx === 'off' ? 0 : 920);
   }
 
   // Twinkling stars: fixed spots so it's calm, each on its own rhythm.
@@ -58,7 +69,7 @@
   }
   // Now and then a shooting star crosses the sky.
   function shoot() {
-    if (!document.hidden) {
+    if (!document.hidden && fx !== 'off') {
       const s = document.createElement('i');
       s.className = 'bg-shoot';
       s.style.left = `${45 + Math.random() * 50}%`;
@@ -82,5 +93,5 @@
   mark();
   document.getElementById('bgPrev').addEventListener('click', () => show(index - 1, -1));
   document.getElementById('bgNext').addEventListener('click', () => show(index + 1, 1));
-  window.backgroundDebug = { index: () => index, show };
+  window.backgroundDebug = { index: () => index, show, setFx };
 })();

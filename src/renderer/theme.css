@@ -419,3 +419,23 @@ main:not(:has(#tab-play.active))::after { background-color: rgba(12,11,16,.82); 
 .bg-dot { width: 7px; height: 7px; padding: 0; border-radius: 50%; border: 0; cursor: pointer; background: rgba(255,255,255,.3); transition: background .15s, transform .15s; }
 .bg-dot.on { background: #b49cff; transform: scale(1.25); }
 .flappy { background: rgba(14,12,20,.12); }
+
+/* Moving layers get their own GPU layer, so animating them never repaints the page. */
+.bg-img, .bg-fill, .bg-layer, .bg-sweep, .bg-star, .bg-shoot { will-change: transform, opacity; backface-visibility: hidden; }
+.bg-img { animation-name: bg-drift3d; }
+@keyframes bg-drift3d { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-1.2%, -.8%, 0) scale(1.035); } }
+
+/* Settings > Background effects (backgrounds.js sets data-bgfx on <html>). */
+/* Smooth: no blur while swapping and no constant drift (the parts slow graphics cards struggle with). */
+html[data-bgfx="smooth"] .bg-img { animation: none; }
+html[data-bgfx="smooth"] .bg-layer.enter { animation-name: bg-enter-smooth; }
+html[data-bgfx="smooth"] .bg-layer.leave { animation-name: bg-leave-smooth; }
+html[data-bgfx="smooth"] body::before, html[data-bgfx="smooth"] body::after { animation: none; }
+@keyframes bg-enter-smooth { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: none; } }
+@keyframes bg-leave-smooth { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.94); } }
+/* Off: a still picture, swapped instantly. */
+html[data-bgfx="off"] .bg-img, html[data-bgfx="off"] .bg-star { animation: none; }
+html[data-bgfx="off"] .bg-sparkles, html[data-bgfx="off"] .bg-sweep { display: none; }
+html[data-bgfx="off"] .bg-layer.enter, html[data-bgfx="off"] .bg-layer.leave { animation: none; }
+html[data-bgfx="off"] .bg-layer.leave { opacity: 0; }
+html[data-bgfx="off"] body::before, html[data-bgfx="off"] body::after { animation: none; }
