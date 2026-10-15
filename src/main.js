@@ -155,7 +155,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 640,
     backgroundColor: '#14161a',
-    title: 'Eclipse Client',
+    title: 'Eclipse Launcher',
     icon: ICON,
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
@@ -641,7 +641,7 @@ const bridgeSource = {
   list: () => readAccounts().accounts.map(a => ({ id: a.id, name: a.name, uuid: a.type === 'microsoft' ? a.uuid : offlineUuid(a.name), type: a.type })),
   activeId: () => readAccounts().active,
   session: bridgeSession,
-  // The Eclipse Client says which server you joined (its Discord mod); shown on the newest game.
+  // The Eclipse Launcher says which server you joined (its Discord mod); shown on the newest game.
   presence: ({ server }) => { if (playing) { playing.server = server || null; updatePresence(); } },
 };
 
@@ -696,14 +696,14 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
         versionId = await installFabric(ROOT, version);
         gameDir = instanceDir(version);
         send('game:progress', { stage: 'Installing FPS Boost mods', done: 0, total: 1 });
-        const res = await installBoostPack({ dir: gameDir, mcVersion: version, ...boostPrefs(), onStatus: s => send('game:log', `[Eclipse Client] ${s}\n`) });
-        if (res.added.length) send('game:log', `[Eclipse Client] FPS Boost added: ${res.added.join(', ')}\n`);
-        if (res.unavailable.length) send('game:log', `[Eclipse Client] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
-        if (await writeBoostOptions(gameDir)) send('game:log', '[Eclipse Client] Applied FPS-friendly video settings\n');
+        const res = await installBoostPack({ dir: gameDir, mcVersion: version, ...boostPrefs(), onStatus: s => send('game:log', `[Eclipse Launcher] ${s}\n`) });
+        if (res.added.length) send('game:log', `[Eclipse Launcher] FPS Boost added: ${res.added.join(', ')}\n`);
+        if (res.unavailable.length) send('game:log', `[Eclipse Launcher] Not available for ${version} yet: ${res.unavailable.join(', ')}\n`);
+        if (await writeBoostOptions(gameDir)) send('game:log', '[Eclipse Launcher] Applied FPS-friendly video settings\n');
       } catch (err) {
         if (!/support/i.test(err.message)) throw err;
         // Fabric doesn't exist for very old versions: still launch, with the JVM tuning only.
-        send('game:log', `[Eclipse Client] ${err.message} Launching vanilla with the optimised Java settings.\n`);
+        send('game:log', `[Eclipse Launcher] ${err.message} Launching vanilla with the optimised Java settings.\n`);
         useFabric = false;
         playing.loader = 'vanilla';
         versionId = version;
@@ -738,17 +738,17 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
       // Fabric, FPS Boost or a modpack: add or remove the Eclipse Client mod to match the setting.
       try {
         const r = clientMod.sync({ gameDir, mcVersion: playing.version, loader: playing.loader, enabled: readSettings().clientMod !== false });
-        if (r === 'added' || r === 'updated') send('game:log', '[Eclipse Client] Eclipse Client mod ready: press Right Shift in game\n');
-        if (r === 'removed') send('game:log', '[Eclipse Client] Eclipse Client mod turned off, removed it\n');
+        if (r === 'added' || r === 'updated') send('game:log', '[Eclipse Launcher] Eclipse Client mod ready: press Right Shift in game\n');
+        if (r === 'removed') send('game:log', '[Eclipse Launcher] Eclipse Client mod turned off, removed it\n');
       } catch (err) {
-        send('game:log', `[Eclipse Client] Could not set up the Eclipse Client mod: ${err.message}\n`);
+        send('game:log', `[Eclipse Launcher] Could not set up the Eclipse Client mod: ${err.message}\n`);
       }
     }
     let extraJvmArgs = [];
     try {
       extraJvmArgs = [await accountBridge.jvmArg(bridgeSource)];
     } catch (err) {
-      send('game:log', `[Eclipse Client] In-game account switching is off: ${err.message}\n`);
+      send('game:log', `[Eclipse Launcher] In-game account switching is off: ${err.message}\n`);
     }
     entry.child = await launch({
       root: ROOT,
@@ -775,7 +775,7 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
   entry.child.on('exit', code => {
     games.delete(key);
     sendInstances();
-    send('game:log', `\n[Eclipse Client] Minecraft (${entry.playing.packName || `${version} ${loader}`}) exited with code ${code}\n`);
+    send('game:log', `\n[Eclipse Launcher] Minecraft (${entry.playing.packName || `${version} ${loader}`}) exited with code ${code}\n`);
     // Discord shows another game that is still open, if any.
     const other = [...games.values()].reverse().find(g => g.state === 'running');
     if (other) setPlaying(other.playing);
@@ -816,7 +816,7 @@ function refreshGameState() {
 
 function buildActivity() {
   const activity = {
-    assets: { large_image: LOGO_URL, large_text: 'Eclipse Client' },
+    assets: { large_image: LOGO_URL, large_text: 'Eclipse Launcher' },
     buttons: [{ label: 'tatnat on YouTube', url: 'https://www.youtube.com/@tatnatmc' }],
   };
   if (gameState === 'running' && playing) {

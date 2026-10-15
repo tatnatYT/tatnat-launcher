@@ -355,3 +355,6 @@ input:not(.switch):focus, select:focus { border-color: var(--accent); box-shadow
 .brand-text .version-pill { font-family: Inter, system-ui, sans-serif; letter-spacing: .02em; font-size: 9.5px; text-transform: none; }
 .splash-title { letter-spacing: 6px; }
 .splash-title span { font-weight: 700; letter-spacing: 10px; }
+/* "LAUNCHER" is longer than "CLIENT": a little tighter so the version pill stays on one line. */
+.brand-text span { letter-spacing: 2.6px; gap: 7px; }
+.brand-text .version-pill { white-space: nowrap; }

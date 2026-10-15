@@ -69,7 +69,7 @@
   inner.className = 'splash-inner';
   const title = document.createElement('div');
   title.className = 'splash-title';
-  title.innerHTML = 'Eclipse<span>CLIENT</span>';
+  title.innerHTML = 'Eclipse<span>LAUNCHER</span>';
   const bar = document.createElement('div');
   bar.className = 'splash-bar';
   bar.append(document.createElement('i'));

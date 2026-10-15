@@ -320,7 +320,7 @@ $('play').addEventListener('click', async () => {
     await api.launch({ version, loader: settings.loader, packId: activePack()?.id || null, memoryMb: settings.memoryMb });
   } catch (err) {
     toast(cleanError(err));
-    appendLog(`\n[Eclipse Client] Launch failed: ${cleanError(err)}\n`);
+    appendLog(`\n[Eclipse Launcher] Launch failed: ${cleanError(err)}\n`);
   }
 });
 
@@ -913,7 +913,7 @@ async function installMod(id) {
   renderModResults();
   try {
     const names = await api.installMod({ target: target(), projectId: id });
-    if (names.length > 1) appendLog(`[Eclipse Client] Installed ${names.join(', ')}\n`);
+    if (names.length > 1) appendLog(`[Eclipse Launcher] Installed ${names.join(', ')}\n`);
     if (editingBoost()) {
       const m = mods.results.find(r => r.id === id);
       if (m) { await api.addBoostMod(m); toast(`${m.title} added to your FPS Boost pack - it installs on every version.`); renderBoostPack(); }
@@ -952,7 +952,7 @@ debounceInput('modSearch', q => { mods.query = q; searchMods(); });
 wireSegmented('modsView', { browse: 'modsBrowse', installed: 'modsInstalled' });
 $('addModFiles').addEventListener('click', () => addModFiles(null));
 $('openModsFolder').addEventListener('click', () => api.openModsFolder({ target: target() }));
-api.onModStatus(s => appendLog(`[Eclipse Client] ${s}\n`));
+api.onModStatus(s => appendLog(`[Eclipse Launcher] ${s}\n`));
 
 // ---------- texture packs ----------
 const packs = { source: 'modrinth', query: '', offset: 0, total: 0, cursor: null, results: [], installed: [], busy: new Set(), loading: false, loadedFor: null, pmcKey: false };
@@ -1265,7 +1265,7 @@ function refreshShaders() {
   if (!shaderState.results.length) searchShaders();
 }
 
-api.onShaderStatus(s => appendLog(`[Eclipse Client] ${s}\n`));
+api.onShaderStatus(s => appendLog(`[Eclipse Launcher] ${s}\n`));
 debounceInput('shaderSearch', q => { shaderState.query = q; searchShaders(); });
 wireSegmented('shadersView', { browse: 'shadersBrowse', installed: 'shadersInstalled' });
 $('addShaderFiles').addEventListener('click', async () => {
@@ -1541,7 +1541,7 @@ $('editPack').addEventListener('click', () => showTab('mods'));
 $('leavePack').addEventListener('click', () => setActivePack(null));
 api.onModpackStatus(s => {
   if (!$('newPackModal').hidden) { $('newPackStatus').hidden = false; $('newPackStatus').textContent = s; }
-  appendLog(`[Eclipse Client] ${s}\n`);
+  appendLog(`[Eclipse Launcher] ${s}\n`);
 });
 
 // New modpack dialog
@@ -1634,7 +1634,7 @@ function renderUpdate(s) {
     $('updateSub').textContent = 'Click to download it';
   }
   const text = {
-    idle: 'Eclipse Client updates itself from GitHub.',
+    idle: 'Eclipse Launcher updates itself from GitHub.',
     dev: 'Updates are off while running from source.',
     checking: 'Checking for updates…',
     none: `You're on the newest version (v${s.current || ''}).`,
