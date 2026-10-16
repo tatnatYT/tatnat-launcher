@@ -1,4 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, session, dialog } = require('electron');
+// Rest mode restarts the graphics process to give its memory back; never let that switch graphics off.
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
 const fs = require('fs');
 const path = require('path');
 const { launch, getManifest, offlineUuid } = require('./core/launch');
@@ -20,6 +22,7 @@ const shaders = require('./core/shaders');
 const updates = require('./core/updates');
 const nameFilter = require('./core/namefilter');
 const skins = require('./core/skins');
+const plus = require('./core/plus');
 const { createUpdater } = require('./updater');
 
 // Kept separate from the official launcher's .minecraft so the two never clash.
@@ -145,7 +148,73 @@ function microsoftLogin() {
 
 // ---------- window ----------
 function send(channel, payload) {
-  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  // Keep the game log here too, so it survives the page resting (see below) and reloading.
+  if (channel === 'game:log') {
+    gameLogHistory += payload;
+    if (gameLogHistory.length > 400_000) gameLogHistory = gameLogHistory.slice(-200_000);
+  }
+  if (win && !win.isDestroyed() && !resting) win.webContents.send(channel, payload);
+}
+let gameLogHistory = '';
+ipcMain.handle('game:logHistory', () => gameLogHistory);
+
+// ---------- rest mode: very little memory while the launcher is in the background ----------
+// When the window is minimized or hidden, or sits behind a running game for a while, the page is swapped
+// for a tiny blank one: that frees the page's memory and most of the graphics memory (~200 MB down to well
+// under 100 MB). Coming back loads the page again on the tab you were on.
+const REST_PAGE = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><title>Eclipse Launcher</title><body style="margin:0;background:#0f0e13"></body>');
+let resting = false, restTimer = null, lastTab = 'play';
+const restEnabled = () => readSettings().restInBackground !== false;
+
+let lastGpuRestart = 0;
+function rest() {
+  if (resting || !win || win.isDestroyed() || !restEnabled()) return;
+  if (win.isFocused() && win.isVisible() && !win.isMinimized()) return;
+  resting = true;
+  win.webContents.loadURL(REST_PAGE);
+  session.defaultSession.clearCache().catch(() => {});
+  setTimeout(() => {
+    if (!resting) return;
+    // The graphics process keeps its caches (~130 MB) even with a blank page; a fresh one starts at ~60 MB.
+    // At most every half hour, and only while graphics acceleration is still on.
+    const gpu = app.getAppMetrics().find(p => p.type === 'GPU');
+    if (gpu && Date.now() - lastGpuRestart > 30 * 60 * 1000 && app.getGPUFeatureStatus().gpu_compositing?.startsWith('enabled')) {
+      lastGpuRestart = Date.now();
+      try { process.kill(gpu.pid); } catch { /* already gone */ }
+    }
+    collectGarbage();
+    setTimeout(() => { if (resting) trimMemory(); }, 3000);
+  }, 1500);
+}
+
+/** A full garbage collection in this (main) process. */
+function collectGarbage() {
+  try {
+    require('v8').setFlagsFromString('--expose-gc');
+    require('vm').runInNewContext('gc')();
+  } catch { /* not available */ }
+}
+
+/** Asks Windows to page out what the launcher's processes aren't using (what it does to minimized apps anyway). */
+function trimMemory() {
+  if (process.platform !== 'win32') return;
+  const pids = app.getAppMetrics().map(p => p.pid).join(',');
+  const script = `Add-Type -Namespace E -Name P -MemberDefinition '[DllImport("psapi.dll")] public static extern bool EmptyWorkingSet(IntPtr h);'; foreach ($i in @(${pids})) { try { [E.P]::EmptyWorkingSet((Get-Process -Id $i).Handle) | Out-Null } catch {} }`;
+  require('child_process').execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', script], { windowsHide: true }, () => {});
+}
+
+function wake() {
+  clearTimeout(restTimer);
+  if (!resting || !win || win.isDestroyed()) return;
+  resting = false;
+  win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query: { tab: lastTab, woke: '1' } });
+}
+
+function scheduleRest() {
+  clearTimeout(restTimer);
+  if (!win || win.isDestroyed() || resting) return;
+  if (win.isMinimized() || !win.isVisible()) restTimer = setTimeout(rest, 8000);
+  else if (!win.isFocused() && games.size) restTimer = setTimeout(rest, 45000);
 }
 
 function createWindow() {
@@ -161,6 +230,10 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.on('minimize', scheduleRest);
+  win.on('hide', scheduleRest);
+  win.on('blur', scheduleRest);
+  for (const ev of ['restore', 'show', 'focus']) win.on(ev, wake);
 }
 
 // ---------- IPC ----------
@@ -246,6 +319,43 @@ ipcMain.handle('skins:apply', async (_e, { libraryId, defaultId, variant }) => {
     }
     return p;
   } catch (err) { return skinErr(err); }
+});
+
+// ---------- Eclipse Plus ----------
+const plusErr = err => { throw new Error(err instanceof plus.PlusError || err instanceof auth.AuthError ? err.message : `Eclipse Plus: ${err.message}`); };
+
+ipcMain.handle('plus:state', async (_e, opts = {}) => {
+  const store = readAccounts();
+  const active = store.accounts.find(a => a.id === store.active);
+  const out = { available: !!plus.SERVER, checkout: plus.CHECKOUT, capes: plus.CAPES, account: active ? { type: active.type, name: active.name } : null, session: null, error: null };
+  // Dev only: ECLIPSE_PLUS_PREVIEW=owner shows the page as an owner with Plus, without a server.
+  if (process.env.ECLIPSE_PLUS_PREVIEW === 'owner') return { ...out, available: true, checkout: 'x', account: { type: 'microsoft', name: 'tatnat' }, session: { name: 'tatnat', plus: true, cape: 'eclipse', owner: true } };
+  if (!out.available || !active || active.type !== 'microsoft') return out;
+  try {
+    const acc = await skinAccount();
+    const s = await plus.session(ROOT, acc, { force: !!opts.refresh });
+    out.session = { name: s.name, plus: !!s.plus, cape: s.cape, owner: !!s.owner };
+  } catch (err) {
+    out.error = err.message;
+  }
+  return out;
+});
+
+ipcMain.handle('plus:activate', async (_e, key) => {
+  try { return await plus.activate(ROOT, await skinAccount(), key); } catch (err) { return plusErr(err); }
+});
+
+ipcMain.handle('plus:equip', async (_e, cape) => {
+  try { return await plus.equip(ROOT, await skinAccount(), cape); } catch (err) { return plusErr(err); }
+});
+
+ipcMain.handle('plus:admin', async (_e, { action, args }) => {
+  if (!['grant', 'revoke', 'list'].includes(action)) throw new Error('Unknown action.');
+  try { return await plus.admin(ROOT, await skinAccount(), action, args || {}); } catch (err) { return plusErr(err); }
+});
+
+ipcMain.handle('plus:openCheckout', () => {
+  if (plus.CHECKOUT) shell.openExternal(plus.CHECKOUT);
 });
 
 ipcMain.handle('skins:cape', async (_e, capeId) => {
@@ -787,6 +897,12 @@ ipcMain.handle('game:launch', async (_e, { version, loader = 'vanilla', packId =
     } catch (err) {
       send('game:log', `[Eclipse Launcher] In-game account switching is off: ${err.message}\n`);
     }
+    // Eclipse Plus: lets the mod show capes and badges (other Eclipse players see yours).
+    try {
+      extraJvmArgs.push(...(await plus.jvmArgs(ROOT, account)));
+    } catch (err) {
+      send('game:log', `[Eclipse Launcher] Eclipse Plus capes and badges are off this time: ${err.message}\n`);
+    }
     // The main-menu backgrounds for the Eclipse Client mod (its title screen reads them from here).
     try {
       extraJvmArgs.push(`-Dtatnat.backgrounds=${syncBackgrounds()}`);
@@ -904,6 +1020,7 @@ ipcMain.handle('presence:status', () => {
 
 ipcMain.handle('presence:view', (_e, view) => {
   launcherView = view || {};
+  if (launcherView.tab) lastTab = launcherView.tab;
   updatePresence();
 });
 

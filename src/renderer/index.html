@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="skins.css">
   <link rel="stylesheet" href="home.css">
   <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="plus.css">
 </head>
 <body>
   <aside class="sidebar">
@@ -61,6 +62,10 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 3h8l4 4-3 3v11H7V10L4 7z"/><path d="M9 3a3 3 0 006 0"/></svg></span>
         <span class="nav-text">Skins</span>
         <kbd>Ctrl 6</kbd>
+      </button>
+      <button class="nav-btn nav-plus" data-tab="plus">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M15.5 17.6A7.6 7.6 0 1 1 8.4 6.5a6.2 6.2 0 0 0 7.1 11.1z"/><path d="M18 3.5v5M15.5 6h5"/></svg></span>
+        <span class="nav-text">Eclipse Plus</span>
       </button>
       <button class="nav-btn" data-tab="console" data-key="7">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/></svg></span>
@@ -425,6 +430,41 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-plus">
+      <div class="plus-hero">
+        <div class="plus-hero-text">
+          <span class="plus-chip"><svg viewBox="0 0 24 24"><path d="M15.5 17.6A7.6 7.6 0 1 1 8.4 6.5a6.2 6.2 0 0 0 7.1 11.1z"/><path d="M18 3.5v5M15.5 6h5"/></svg> ECLIPSE PLUS</span>
+          <h2>Wear a cape everyone sees</h2>
+          <p>16 capes, 9 of them fully animated, and a purple <b>Plus</b> badge next to your name. Every Eclipse player sees them on you.</p>
+          <div class="plus-hero-actions">
+            <button class="wear-btn plus-buy" id="plusBuy"><span>Get Plus</span><b>$10 once</b></button>
+            <span class="plus-owned" id="plusOwned" hidden><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> You have Eclipse Plus</span>
+          </div>
+          <div class="plus-key" id="plusKeyRow">
+            <input id="plusKey" placeholder="Already bought it? Paste your license key" spellcheck="false" autocomplete="off">
+            <button class="ghost-btn accent" id="plusActivate">Activate</button>
+          </div>
+          <p class="plus-msg" id="plusMsg" hidden></p>
+        </div>
+        <div class="plus-hero-art" id="plusHeroArt"><img id="plusHeroCape" src="../../assets/capes/eclipse.gif" alt=""></div>
+      </div>
+      <div class="panel-head plus-gallery-head">
+        <h3>Capes</h3>
+        <span class="skins-who" id="plusWho"></span>
+      </div>
+      <div class="plus-grid" id="plusCapes"></div>
+      <section class="plus-owner" id="plusOwner" hidden>
+        <div class="panel-head"><h3>Owner tools</h3><span class="skins-who">Only you can see this</span></div>
+        <div class="plus-owner-row">
+          <input id="plusPlayer" placeholder="Minecraft name or UUID" spellcheck="false" autocomplete="off">
+          <select id="plusGrantCape"></select>
+          <button class="ghost-btn accent" id="plusGrant">Give Plus</button>
+          <button class="ghost-btn danger" id="plusRevoke">Take away</button>
+        </div>
+        <div class="plus-users" id="plusUsers"></div>
+      </section>
+    </section>
+
     <section class="tab" id="tab-console">
       <div class="panel-head">
         <h2>Logs</h2>
@@ -621,5 +661,6 @@
   <script src="skins.js"></script>
   <script src="flappy.js"></script>
   <script src="backgrounds.js"></script>
+  <script src="plus.js"></script>
 </body>
 </html>

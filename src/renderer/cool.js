@@ -78,8 +78,10 @@
   mark.src = '../../assets/logo-256.png';
   inner.append(mark, title, bar);
   splash.append(inner);
-  document.body.append(splash);
-  const shownAt = performance.now();
+  // Coming back from resting in the background: no splash, the page should just be there.
+  const woke = new URLSearchParams(location.search).has('woke');
+  if (!woke) document.body.append(splash);
+  const shownAt = woke ? -1e9 : performance.now();
   window.hideSplash = () => {
     const wait = Math.max(0, 1300 - (performance.now() - shownAt));
     setTimeout(() => { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }, wait);

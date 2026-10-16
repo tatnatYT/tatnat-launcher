@@ -1,0 +1,61 @@
+/* Eclipse Plus page. */
+.nav-plus .nav-text { background: linear-gradient(90deg, #d9c8ff, #b49cff 55%, #e07aff); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 600; }
+.nav-plus .nav-icon svg { stroke: #c9a8ff; }
+
+.plus-hero { flex-shrink: 0; position: relative; display: grid; grid-template-columns: 1fr 170px; gap: 26px; align-items: center; padding: 26px 28px; margin-bottom: 22px; border-radius: 18px; overflow: hidden;
+  background: radial-gradient(ellipse at 85% 30%, rgba(180, 156, 255, .28), transparent 55%), radial-gradient(ellipse at 10% 120%, rgba(224, 122, 255, .18), transparent 50%), linear-gradient(160deg, #1e1830, #121019);
+  border: 1px solid rgba(180, 156, 255, .25); }
+.plus-hero::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--plus-a, 0deg), transparent 0 30%, rgba(180, 156, 255, .9) 40%, transparent 50% 80%, rgba(224, 122, 255, .8) 90%, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: plus-spin 6s linear infinite; }
+@property --plus-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes plus-spin { to { --plus-a: 360deg; } }
+.plus-chip { display: inline-flex; align-items: center; gap: 7px; font: 700 10.5px/1 Orbitron, Inter, sans-serif; letter-spacing: .2em; color: #d9c8ff; padding: 6px 10px; border-radius: 999px; background: rgba(138, 99, 232, .2); border: 1px solid rgba(180, 156, 255, .35); }
+.plus-chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.plus-hero h2 { margin: 14px 0 8px; font-size: 26px; letter-spacing: -.02em; }
+.plus-hero p { margin: 0; color: var(--muted); max-width: 520px; line-height: 1.6; }
+.plus-hero p b { color: #d9c8ff; }
+.plus-hero-actions { display: flex; align-items: center; gap: 14px; margin: 18px 0 14px; }
+.plus-buy { display: inline-flex; align-items: center; gap: 12px; padding: 11px 18px; font-size: 14px; }
+.plus-buy b { font-weight: 700; padding: 3px 8px; border-radius: 7px; background: rgba(255, 255, 255, .18); }
+.plus-owned { display: inline-flex; align-items: center; gap: 8px; color: #8ff0c0; font-weight: 600; }
+.plus-owned svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.plus-key { display: flex; gap: 8px; max-width: 520px; }
+.plus-key input, .plus-owner-row input, .plus-owner-row select { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; background: rgba(10, 9, 14, .6); border: 1px solid var(--line, rgba(255, 255, 255, .1)); color: var(--text); font: inherit; }
+.plus-key input:focus, .plus-owner-row input:focus { outline: none; border-color: rgba(180, 156, 255, .6); }
+.plus-msg { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.plus-msg.ok { color: #8ff0c0; }
+.plus-msg.bad { color: #ff8fa3; }
+.plus-hero-art { position: relative; justify-self: center; width: 150px; aspect-ratio: 10 / 16; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5), 0 0 60px rgba(138, 99, 232, .4); transform: perspective(700px) rotateY(-14deg) rotateX(4deg); animation: plus-sway 6s ease-in-out infinite; }
+.plus-hero-art img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+@keyframes plus-sway { 50% { transform: perspective(700px) rotateY(-6deg) rotateX(2deg) translateY(-4px); } }
+
+.plus-gallery-head { margin-top: 4px; }
+.plus-grid { flex-shrink: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+.plus-cape { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 14px; cursor: pointer; text-align: left; color: var(--text);
+  background: var(--panel-2); border: 1px solid rgba(255, 255, 255, .06); transition: transform .2s, border-color .2s, box-shadow .2s; }
+.plus-cape:hover { transform: translateY(-3px); border-color: rgba(180, 156, 255, .45); box-shadow: 0 14px 34px rgba(91, 63, 174, .3); }
+.plus-cape.on { border-color: var(--accent-light); box-shadow: 0 0 0 1px var(--accent-light), 0 14px 34px rgba(91, 63, 174, .35); }
+.plus-cape-art { display: block; aspect-ratio: 10 / 16; border-radius: 8px; overflow: hidden; background: #0d0c12; }
+.plus-cape-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.plus-cape-name { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.plus-cape-name i { font: 700 8.5px Orbitron, sans-serif; font-style: normal; letter-spacing: .12em; color: #d9c8ff; padding: 3px 5px; border-radius: 5px; background: rgba(138, 99, 232, .25); }
+.plus-cape-desc { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.plus-cape-tag { position: absolute; top: 16px; left: 16px; font: 700 9px Orbitron, sans-serif; letter-spacing: .14em; padding: 4px 7px; border-radius: 6px; background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); }
+.plus-cape.locked .plus-cape-art::after { content: ''; position: absolute; }
+.plus-cape.locked { opacity: .92; }
+.plus-cape.none .plus-cape-art { display: grid; place-items: center; }
+.plus-cape.none svg { width: 38px; height: 38px; fill: none; stroke: var(--muted); stroke-width: 1.6; }
+
+.plus-owner { flex-shrink: 0; margin-top: 26px; padding: 18px; border-radius: 16px; background: var(--panel-2); border: 1px dashed rgba(180, 156, 255, .35); }
+.plus-owner-row { display: flex; gap: 8px; margin: 10px 0 14px; }
+.plus-owner-row select { flex: 0 0 140px; }
+.ghost-btn.danger { color: #ff8fa3; }
+.plus-users table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.plus-users th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.plus-users td { padding: 7px 8px; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+
+/* Elements hidden by script stay hidden whatever their display. */
+#tab-plus [hidden] { display: none !important; }
+.plus-owner .panel-head { margin: 0; padding: 0 0 2px; }

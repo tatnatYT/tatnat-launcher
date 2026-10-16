@@ -47,6 +47,7 @@ function showTab(name) {
   if (name === 'shaders') refreshShaders();
   if (name === 'modpacks') loadModpacks();
   if (name === 'skins') window.onSkinsTab?.();
+  if (name === 'plus') window.onPlusTab?.();
   api.setPresenceView({ tab: name });
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -368,7 +369,7 @@ function formatEvent(xml) {
   return `[${time}] [${attr('thread')}/${attr('level')}]: ${cdata(xml, 'Message')}\n${thrown ? thrown.trimEnd() + '\n' : ''}`;
 }
 
-api.onLog(chunk => {
+function handleLogChunk(chunk) {
   logBuffer += chunk;
   let out = '';
   for (;;) {
@@ -387,7 +388,8 @@ api.onLog(chunk => {
     logBuffer = logBuffer.slice(end + '</log4j:Event>'.length).replace(/^\s*\n/, '');
   }
   if (out) appendLog(out);
-});
+}
+api.onLog(handleLogChunk);
 
 $('clearLog').addEventListener('click', () => { $('log').textContent = ''; });
 
@@ -1792,5 +1794,11 @@ setInterval(() => { if ($('tab-settings').classList.contains('active')) renderDi
   await loadVersions();
   await loadModpacks();
   targetChanged();
+  // After resting in the background: the game log so far, and the tab you were on.
+  const params = new URLSearchParams(location.search);
+  const history = await api.logHistory();
+  if (history) handleLogChunk(history);
+  const tab = params.get('tab');
+  if (tab && document.getElementById(`tab-${tab}`)) showTab(tab);
   window.hideSplash?.();
 })();

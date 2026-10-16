@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('launcher', {
   mcFont: () => ipcRenderer.invoke('skins:mcFont'),
   applySkin: opts => ipcRenderer.invoke('skins:apply', opts),
   setCape: capeId => ipcRenderer.invoke('skins:cape', capeId),
+  plusState: opts => ipcRenderer.invoke('plus:state', opts),
+  plusActivate: key => ipcRenderer.invoke('plus:activate', key),
+  plusEquip: cape => ipcRenderer.invoke('plus:equip', cape),
+  plusAdmin: (action, args) => ipcRenderer.invoke('plus:admin', { action, args }),
+  plusCheckout: () => ipcRenderer.invoke('plus:openCheckout'),
   importSkins: opts => ipcRenderer.invoke('skins:import', opts),
   pickSkinFiles: () => ipcRenderer.invoke('skins:pickFiles'),
   saveCurrentSkin: () => ipcRenderer.invoke('skins:saveCurrent'),
@@ -31,6 +36,7 @@ contextBridge.exposeInMainWorld('launcher', {
   onInstances: cb => ipcRenderer.on('game:instances', (_e, list) => cb(list)),
   onProgress: cb => ipcRenderer.on('game:progress', (_e, p) => cb(p)),
   onLog: cb => ipcRenderer.on('game:log', (_e, t) => cb(t)),
+  logHistory: () => ipcRenderer.invoke('game:logHistory'),
   onState: cb => ipcRenderer.on('game:state', (_e, s) => cb(s)),
 
   // Paths of files dropped onto the window (File.path no longer exists in Electron).

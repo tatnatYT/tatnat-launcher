@@ -105,7 +105,7 @@ async function launch({ root, gameDir = root, versionId, account, memoryMb = 409
 
   onProgress('Starting Minecraft', 1, 1);
   // Never echo the access token into the console.
-  const shown = args.map(a => (online && a.includes(account.accessToken) ? '<token>' : a.startsWith('-Dtatnat.accounts=') ? '-Dtatnat.accounts=<private>' : a.length > 200 ? '<classpath>' : a));
+  const shown = args.map(a => (online && a.includes(account.accessToken) ? '<token>' : a.startsWith('-Dtatnat.accounts=') ? '-Dtatnat.accounts=<private>' : a.startsWith('-Dtatnat.plusToken=') ? '-Dtatnat.plusToken=<private>' : a.length > 200 ? '<classpath>' : a));
   onLog(`> ${inst.javaBin} ${shown.join(' ')}\n`);
   const child = spawn(inst.javaBin, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false });
   child.stdout.setEncoding('utf8').on('data', onLog);
