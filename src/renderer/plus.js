@@ -7,12 +7,27 @@
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clean = err => String(err?.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
-  function say(text, kind = '') {
-    const m = $('plusMsg');
-    m.hidden = !text;
-    m.textContent = text || '';
-    m.className = `plus-msg ${kind}`;
+  // Messages show in a floating toast (the page scrolls, so a line at the top could be out of view),
+  // and also next to the part of the page they're about.
+  let toastTimer;
+  function say(text, kind = '', where = 'plusMsg') {
+    for (const id of ['plusMsg', 'plusOwnerMsg']) {
+      const m = $(id);
+      const here = id === where && !!text;
+      m.hidden = !here;
+      if (here) {
+        m.textContent = text;
+        m.className = `plus-msg ${kind}`;
+      }
+    }
+    const t = $('plusToast');
+    t.hidden = !text;
+    t.textContent = text || '';
+    t.className = `plus-toast ${kind}`;
+    clearTimeout(toastTimer);
+    if (text) toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
   }
+  const notLive = "Eclipse Plus isn't live yet: wearing and giving capes works as soon as the Plus server is online.";
 
   function render() {
     const s = state;
@@ -49,6 +64,7 @@
       none.addEventListener('click', () => equip('none'));
       grid.append(none);
     }
+    $('plusSoon').hidden = !!s?.available;
     $('plusOwner').hidden = !session?.owner;
     if (session?.owner) {
       const sel = $('plusGrantCape');
@@ -70,7 +86,7 @@
   async function equip(cape) {
     if (busy) return;
     if (!state?.session?.plus) {
-      say(state?.available ? 'Get Eclipse Plus to wear this cape.' : 'Eclipse Plus is coming soon.', 'info');
+      say(state?.available ? (state.session ? 'Get Eclipse Plus to wear this cape.' : state.error || 'Sign in with a Microsoft account to wear capes.') : notLive, 'bad');
       return;
     }
     busy = true;
@@ -119,15 +135,17 @@
   }
   async function ownerAction(action) {
     const player = $('plusPlayer').value.trim();
-    if (!player) { say('Type a Minecraft name or UUID first.', 'bad'); return; }
+    if (!state?.available) { say(notLive, 'bad', 'plusOwnerMsg'); return; }
+    if (!player) { say('Type a Minecraft name or UUID first.', 'bad', 'plusOwnerMsg'); return; }
+    say(action === 'grant' ? `Giving ${player} Eclipse Plus…` : `Taking Eclipse Plus away from ${player}…`, '', 'plusOwnerMsg');
     try {
       const r = await api.plusAdmin(action, action === 'grant' ? { player, cape: $('plusGrantCape').value } : { player });
       const who = r.name || player;
-      say(action === 'grant' ? `${who} now has Eclipse Plus.` : r.removed ? `${who} no longer has Eclipse Plus.` : `${who} didn't have Eclipse Plus.`, 'ok');
+      say(action === 'grant' ? `${who} now has Eclipse Plus.` : r.removed ? `${who} no longer has Eclipse Plus.` : `${who} didn't have Eclipse Plus.`, 'ok', 'plusOwnerMsg');
       $('plusPlayer').value = '';
       loadUsers();
     } catch (err) {
-      say(clean(err), 'bad');
+      say(clean(err), 'bad', 'plusOwnerMsg');
     }
   }
   $('plusGrant').addEventListener('click', () => ownerAction('grant'));
