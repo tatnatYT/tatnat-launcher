@@ -582,6 +582,111 @@
     });
   }
 
+  // ---------- the menu (sidebar) ----------
+  const sidebar = document.querySelector('.sidebar');
+
+  // Collapse to icons only; remembered on this PC. Names show as tooltips while collapsed.
+  const collapse = document.createElement('button');
+  collapse.className = 'side-collapse';
+  collapse.title = 'Collapse menu';
+  collapse.innerHTML = '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>';
+  document.querySelector('.brand')?.append(collapse);
+  const setCollapsed = on => {
+    document.body.classList.toggle('side-mini', on);
+    collapse.title = on ? 'Expand menu' : 'Collapse menu';
+    try { localStorage.setItem('side-mini', on ? '1' : '0'); } catch { /* storage off */ }
+    setTimeout(() => window.moveIndicator?.(), 320);
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 340);
+  };
+  collapse.addEventListener('click', () => setCollapsed(!document.body.classList.contains('side-mini')));
+  try { if (localStorage.getItem('side-mini') === '1') setCollapsed(true); } catch { /* storage off */ }
+
+  const tip = document.createElement('div');
+  tip.className = 'side-tip';
+  document.body.append(tip);
+  sidebar?.addEventListener('pointerover', e => {
+    const b = e.target.closest('.nav-btn, .status-card, .account-card');
+    if (!b || !document.body.classList.contains('side-mini')) { tip.classList.remove('on'); return; }
+    const label = b.querySelector('.nav-text, strong')?.textContent || '';
+    const r = b.getBoundingClientRect();
+    tip.textContent = label;
+    tip.style.top = `${r.top + r.height / 2}px`;
+    tip.style.left = `${r.right + 10}px`;
+    tip.classList.add('on');
+  });
+  sidebar?.addEventListener('pointerleave', () => tip.classList.remove('on'));
+
+  // The account card opens a quick switcher instead of jumping straight to Accounts.
+  const card = $id('accountCard');
+  const pop = document.createElement('div');
+  pop.className = 'acct-pop';
+  pop.hidden = true;
+  document.body.append(pop);
+  function closePop() { pop.hidden = true; card?.classList.remove('open'); }
+  function openPop() {
+    const accs = (typeof accountData !== 'undefined' && accountData.accounts) || [];
+    pop.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'acct-pop-head';
+    head.textContent = accs.length ? 'Play as' : 'No accounts yet';
+    pop.append(head);
+    for (const a of accs) {
+      const row = document.createElement('button');
+      row.className = 'acct-pop-row' + (a.id === accountData.active ? ' on' : '');
+      const meta = document.createElement('span');
+      meta.className = 'acct-pop-meta';
+      meta.innerHTML = '<strong></strong><em></em>';
+      meta.querySelector('strong').textContent = a.name;
+      meta.querySelector('em').textContent = a.type === 'microsoft' ? 'Microsoft' : 'Offline';
+      const check = document.createElement('i');
+      check.className = 'acct-pop-check';
+      row.append(headEl(a), meta, check);
+      row.addEventListener('click', async () => {
+        closePop();
+        if (a.id === accountData.active) return;
+        accountData = await api.selectAccount(a.id);
+        renderAccounts();
+        toast(`Playing as ${a.name}`);
+      });
+      pop.append(row);
+    }
+    const manage = document.createElement('button');
+    manage.className = 'acct-pop-manage';
+    manage.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add or manage accounts</span>';
+    manage.addEventListener('click', () => { closePop(); showTab('accounts'); });
+    pop.append(manage);
+    const r = card.getBoundingClientRect();
+    pop.style.left = `${r.left}px`;
+    pop.style.width = `${Math.max(r.width, 220)}px`;
+    pop.style.bottom = `${window.innerHeight - r.top + 8}px`;
+    pop.hidden = false;
+    card.classList.add('open');
+  }
+  // Capture phase, so the card's own "go to Accounts" click doesn't run.
+  document.addEventListener('click', e => {
+    if (card && card.contains(e.target)) {
+      e.stopPropagation();
+      e.preventDefault();
+      pop.hidden ? openPop() : closePop();
+      return;
+    }
+    if (!pop.hidden && !pop.contains(e.target)) closePop();
+  }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+
+  // Status card: a progress ring while downloading, a timer while playing.
+  const status = $id('statusCard');
+  const timer = document.createElement('span');
+  timer.className = 'status-timer';
+  status?.append(timer);
+  setInterval(() => {
+    const running = document.body.dataset.game === 'running';
+    timer.textContent = running && since ? (() => {
+      const s = Math.floor((Date.now() - since) / 1000);
+      return (s >= 3600 ? `${Math.floor(s / 3600)}:` : '') + `${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    })() : '';
+  }, 1000);
+
   // Clicking empty space sends out a small shockwave (buttons have their own ripple).
   main.addEventListener('pointerdown', e => {
     if (calm() || e.button !== 0) return;
@@ -596,6 +701,10 @@
   });
 
   const fill = $id('progressFill');
-  if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
+  if (fill && play) new MutationObserver(() => {
+    const p = fill.style.width || '0%';
+    play.style.setProperty('--p', p);
+    status?.style.setProperty('--p', parseFloat(p) || 0);
+  })
     .observe(fill, { attributes: true, attributeFilter: ['style'] });
 })();

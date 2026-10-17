@@ -608,3 +608,98 @@ main.quake .bg-stage { animation: ui2-quake .5s cubic-bezier(.36, .07, .19, .97)
   animation: ui2-spin 7s linear infinite; opacity: .75;
 }
 html[data-bgfx="off"] #tab-play .dock::after { animation: none; opacity: .3; }
+
+/* ==========================================================================
+   The menu (sidebar), even better: collapse to icons, quick account switcher,
+   live status card, section lines, Eclipse Plus shine.
+   ========================================================================== */
+.sidebar { transition: width .32s var(--ease), padding .32s var(--ease); position: relative; }
+.brand { position: relative; }
+.side-collapse {
+  margin-left: auto; flex: none; width: 24px; height: 24px; display: grid; place-items: center; cursor: pointer;
+  border-radius: 7px; border: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .03); color: var(--faint);
+  -webkit-app-region: no-drag; transition: color .18s, background .18s, border-color .18s, transform .32s var(--ease);
+}
+.side-collapse:hover { color: #fff; background: rgba(138, 99, 232, .25); border-color: rgba(180, 156, 255, .4); }
+.side-collapse svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* section labels with a fading line */
+.nav-label { display: flex; align-items: center; gap: 10px; }
+.nav-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, .08), transparent); }
+
+/* Eclipse Plus: a slow premium shine across the item */
+.nav-plus { overflow: hidden; }
+.nav-plus::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(214, 200, 255, .16), transparent);
+  animation: ui2-plus-shine 5s ease-in-out infinite;
+}
+@keyframes ui2-plus-shine { 0%, 70% { left: -50%; } 100% { left: 120%; } }
+html[data-bgfx="off"] .nav-plus::after { animation: none; display: none; }
+
+/* status card: progress ring while downloading, timer while playing */
+.status-card { position: relative; }
+.status-card.busy .status-light {
+  width: 16px !important; height: 16px !important; border-radius: 50%; box-shadow: none !important;
+  background: conic-gradient(var(--accent-light) calc(var(--p, 0) * 1%), rgba(255, 255, 255, .1) 0) !important;
+  -webkit-mask: radial-gradient(circle, transparent 4.5px, #000 5px); mask: radial-gradient(circle, transparent 4.5px, #000 5px);
+}
+.status-timer { margin-left: auto; align-self: center; font: 600 11px 'Cascadia Mono', Consolas, monospace; color: #8ff0bd; }
+.status-timer:empty { display: none; }
+.status-card.running .status-light { background: #5be39b !important; box-shadow: 0 0 0 3px rgba(91, 227, 155, .18) !important; }
+
+/* account card: a chevron that turns when the switcher is open */
+.account-card .chev { transition: transform .25s var(--ease); }
+.account-card.open { border-color: rgba(180, 156, 255, .45) !important; background: rgba(138, 99, 232, .1) !important; }
+.account-card.open .chev { transform: rotate(-90deg); }
+
+/* the quick account switcher */
+.acct-pop {
+  position: fixed; z-index: 150; padding: 6px; border-radius: 14px; display: flex; flex-direction: column; gap: 2px;
+  background: rgba(22, 19, 31, .92); border: 1px solid rgba(196, 178, 255, .2);
+  backdrop-filter: blur(20px) saturate(1.4) !important; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 40px rgba(138, 99, 232, .15);
+  animation: ui2-pop-up .25s var(--ease) both; transform-origin: 50% 100%;
+}
+.acct-pop[hidden] { display: none; }
+@keyframes ui2-pop-up { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.acct-pop-head { padding: 6px 10px 4px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.acct-pop-row, .acct-pop-manage {
+  display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 9px; border: 0; cursor: pointer;
+  background: transparent; color: var(--text); font: inherit; text-align: left; transition: background .15s;
+}
+.acct-pop-row:hover, .acct-pop-manage:hover { background: rgba(255, 255, 255, .06); }
+.acct-pop-row.on { background: rgba(138, 99, 232, .16); }
+.acct-pop-row .head { --s: 3.5; border-radius: 5px; }
+.acct-pop-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.acct-pop-meta strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-pop-meta em { font-style: normal; font-size: 11px; color: var(--faint); }
+.acct-pop-check { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .15); flex: none; }
+.acct-pop-row.on .acct-pop-check { border: 0; background: var(--grad); box-shadow: 0 0 10px rgba(138, 99, 232, .6), inset 0 0 0 4px rgba(22, 19, 31, .9); }
+.acct-pop-manage { margin-top: 4px; border-top: 1px solid rgba(255, 255, 255, .06); border-radius: 0 0 9px 9px; padding-top: 10px; color: var(--muted); font-size: 12.5px; }
+.acct-pop-manage svg { width: 16px; height: 16px; fill: none; stroke: var(--accent-light); stroke-width: 2.2; stroke-linecap: round; margin: 0 6px 0 4px; }
+
+/* tooltip used while the menu is collapsed */
+.side-tip {
+  position: fixed; z-index: 160; transform: translate(-4px, -50%); opacity: 0; pointer-events: none; white-space: nowrap;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #fff;
+  background: rgba(30, 26, 42, .96); border: 1px solid rgba(196, 178, 255, .22); box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.side-tip.on { opacity: 1; transform: translate(0, -50%); }
+
+/* ---------- collapsed menu: icons only ---------- */
+body.side-mini .sidebar { width: 72px !important; padding-left: 10px; padding-right: 10px; }
+body.side-mini .brand { flex-direction: column; gap: 10px; padding: 2px 0 12px; }
+body.side-mini .brand-text, body.side-mini .nav-text, body.side-mini .nav-btn kbd, body.side-mini .status-text,
+body.side-mini .account-meta, body.side-mini .account-card .chev, body.side-mini .update-card .status-text,
+body.side-mini .update-card .update-bar, body.side-mini .status-timer { display: none !important; }
+body.side-mini .side-collapse { margin: 0; transform: rotate(180deg); }
+body.side-mini .nav-label { font-size: 0; padding: 10px 6px 6px; }
+body.side-mini .nav-btn { justify-content: center; padding-left: 0; padding-right: 0; }
+body.side-mini .nav-badge { position: absolute; top: 2px; right: 6px; font-size: 9px; padding: 0 4px; }
+body.side-mini .nav-dot { position: absolute; top: 6px; right: 12px; }
+body.side-mini .nav-btn.has-updates .nav-icon::after {
+  content: ''; position: absolute; top: 4px; right: 12px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-light);
+}
+body.side-mini .status-card, body.side-mini .account-card, body.side-mini .update-card { justify-content: center; padding: 10px 0 !important; }
+body.side-mini .nav-plus::after { display: none; }
