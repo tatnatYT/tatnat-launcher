@@ -59,3 +59,6 @@
 /* Elements hidden by script stay hidden whatever their display. */
 #tab-plus [hidden] { display: none !important; }
 .plus-owner .panel-head { margin: 0; padding: 0 0 2px; }
+
+/* The page scrolls (16 capes and the owner tools don't fit on one screen), with the usual page margins. */
+#tab-plus.active { overflow-y: auto; overflow-x: hidden; padding: 28px 32px 40px; display: block; }
