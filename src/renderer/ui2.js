@@ -343,6 +343,178 @@
     setTimeout(() => box.remove(), 5000);
   });
 
+  // ---------- the best we can do ----------
+
+  // Startup: a WebGL eclipse. The moon slides over a bright sun, the corona flares out and a
+  // "diamond ring" flashes, then the logo text shows. Falls back to the logo picture without WebGL.
+  (function eclipseIntro() {
+    const logo = document.querySelector('#splash .splash-logo');
+    if (!logo || calm()) return;
+    const cv = document.createElement('canvas');
+    cv.className = 'splash-eclipse';
+    const gl = cv.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: true });
+    if (!gl) return;
+    const VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+    const FS = `precision highp float;uniform vec2 res;uniform float t;
+      float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+      float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p*=2.03;a*=.5;}return v;}
+      void main(){
+        vec2 uv=(gl_FragCoord.xy-.5*res)/res.y;
+        float R=.17;
+        float k=clamp(t/1.25,0.,1.);k=1.-pow(1.-k,3.);
+        vec2 mc=mix(vec2(-.5,.2),vec2(0.),k);
+        float r=length(uv),a=atan(uv.y,uv.x);
+        float rays=fbm(vec2(a*2.5+sin(a)*.5,r*5.-t*.7))*.9+fbm(vec2(a*8.,t*.35))*.45;
+        float fall=exp(-max(r-R,0.)*mix(16.,6.5,k));
+        float corona=fall*(.25+rays)*mix(.25,1.5,k);
+        vec3 col=vec3(.58,.44,1.)*corona+vec3(.85,.8,1.)*pow(fall,5.)*mix(.15,1.1,k);
+        col+=vec3(1.,.97,1.)*smoothstep(R+.004,R-.004,r);
+        float moon=smoothstep(R+.007,R-.001,length(uv-mc));
+        col=mix(col,vec3(.03,.02,.05),moon);
+        float fl=exp(-pow((t-1.2)*6.,2.));
+        vec2 dp=vec2(-R*.62,R*.79);float d=length(uv-dp);
+        col+=vec3(1.,.95,1.)*fl*(.025/(d+.012));
+        col+=vec3(.85,.75,1.)*fl*.003/(abs(uv.y-dp.y)+.003)*exp(-abs(uv.x-dp.x)*5.);
+        col*=smoothstep(0.,.25,t)*smoothstep(.5,.3,r);
+        float al=clamp(max(max(col.r,col.g),col.b),0.,1.);
+        gl_FragColor=vec4(min(col,vec3(1.)),al);
+      }`;
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const uRes = gl.getUniformLocation(prog, 'res'), uT = gl.getUniformLocation(prog, 't');
+    const size = 300, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = cv.height = size * dpr;
+    logo.replaceWith(cv);
+    const t0 = performance.now();
+    const draw = now => {
+      if (!cv.isConnected) { gl.getExtension('WEBGL_lose_context')?.loseContext(); return; }
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.uniform2f(uRes, cv.width, cv.height);
+      gl.uniform1f(uT, (now - t0) / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+    document.getElementById('splash')?.classList.add('has-eclipse');
+  })();
+
+  // Interface sounds: tiny synthesised clicks and a launch chime (no sound files). Settings > Interface sounds.
+  const sound = (() => {
+    let ctx = null, on = true;
+    try { on = localStorage.getItem('ui-sounds') !== '0'; } catch { /* storage off */ }
+    const box = $id('uiSounds');
+    if (box) {
+      box.checked = on;
+      box.addEventListener('change', () => {
+        on = box.checked;
+        try { localStorage.setItem('ui-sounds', on ? '1' : '0'); } catch { /* storage off */ }
+        if (on) play('tick');
+      });
+    }
+    function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
+      const t = ctx.currentTime + delay;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + .006);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t);
+      o.stop(t + dur + .02);
+    }
+    function play(kind) {
+      if (!on) return;
+      try {
+        ctx ||= new AudioContext();
+        if (kind === 'tick') tone(2100, 1300, .045, .035);
+        else if (kind === 'soft') tone(900, 700, .06, .03, 'triangle');
+        else if (kind === 'open') { tone(400, 900, .16, .03, 'triangle'); tone(1200, 1800, .12, .015, 'sine', .03); }
+        else if (kind === 'launch') {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, f * 1.002, .5, .045, 'sine', i * .07));
+          tone(2093, 2093, .9, .015, 'triangle', .28);
+        }
+      } catch { /* no audio device */ }
+    }
+    return play;
+  })();
+  document.addEventListener('click', e => {
+    const el = e.target.closest?.('button, .switch, select');
+    if (!el || el.disabled) return;
+    if (el.id === 'play') return; // has its own chime
+    sound(el.closest('.nav-btn, .segmented, .chips') ? 'tick' : 'soft');
+  }, true);
+  open.addEventListener('click', () => sound('open'));
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && wrap.hidden === false) sound('open'); });
+
+  // Magnetic PLAY: the button leans towards the mouse when it comes near.
+  if (play) {
+    main.addEventListener('pointermove', e => {
+      if (calm() || play.offsetParent === null) return;
+      const r = play.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const dist = Math.hypot(dx, dy);
+      if (dist > 170) { play.style.translate = ''; return; }
+      const pull = (1 - dist / 170) * .22;
+      play.style.translate = `${(dx * pull).toFixed(1)}px ${(dy * pull * .7).toFixed(1)}px`;
+    }, { passive: true });
+    main.addEventListener('pointerleave', () => { play.style.translate = ''; });
+    play.addEventListener('click', () => {
+      if (play.classList.contains('running') || play.disabled) return;
+      if (typeof activeAccount === 'function' && activeAccount()) sound('launch');
+    });
+  }
+
+  // Sparkle trail behind the mouse on the Play page.
+  let lastSpark = 0;
+  main.addEventListener('pointermove', e => {
+    if (calm() || !$id('tab-play').classList.contains('active')) return;
+    if (e.target.closest('.flappy, .dock, input, select')) return;
+    const now = performance.now();
+    if (now - lastSpark < 38) return;
+    lastSpark = now;
+    const r = main.getBoundingClientRect();
+    const s = document.createElement('i');
+    s.className = 'trail';
+    s.style.left = `${e.clientX - r.left}px`;
+    s.style.top = `${e.clientY - r.top}px`;
+    s.style.setProperty('--x', `${(Math.random() - .5) * 30}px`);
+    s.style.setProperty('--y', `${12 + Math.random() * 26}px`);
+    s.style.setProperty('--s', (.5 + Math.random() * .9).toFixed(2));
+    main.append(s);
+    setTimeout(() => s.remove(), 800);
+  }, { passive: true });
+
+  // "In game" with a live timer in the Play page pill while a game runs.
+  const heroText = document.querySelector('#tab-play .hero-text');
+  let since = 0;
+  function pill() {
+    const running = document.body.dataset.game === 'running';
+    if (running && !since) since = Date.now();
+    if (!running) since = 0;
+    if (!heroText) return;
+    if (running) {
+      const s = Math.floor((Date.now() - since) / 1000);
+      const hms = (s >= 3600 ? `${Math.floor(s / 3600)}:` : '') + `${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      heroText.dataset.pill = `IN GAME · ${hms}`;
+    } else heroText.dataset.pill = 'NOW PLAYING';
+    heroText.classList.toggle('live', running);
+  }
+  pill();
+  setInterval(pill, 1000);
+
   const fill = $id('progressFill');
   if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
     .observe(fill, { attributes: true, attributeFilter: ['style'] });

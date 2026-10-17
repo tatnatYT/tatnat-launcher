@@ -80,7 +80,7 @@
   if (!woke) document.body.append(splash);
   const shownAt = woke ? -1e9 : performance.now();
   window.hideSplash = () => {
-    const wait = Math.max(0, 1300 - (performance.now() - shownAt));
+    const wait = Math.max(0, 3300 - (performance.now() - shownAt)); // long enough for the eclipse intro (ui2.js)
     setTimeout(() => { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }, wait);
   };
   setTimeout(() => window.hideSplash(), 6000); // never get stuck behind it

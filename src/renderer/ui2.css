@@ -499,3 +499,32 @@ html[data-bgfx="off"] :is(.panel-head h2, #tab-play .hero-text h1) { animation: 
 
 /* The sidebar account head: a plain, still face. */
 .account-card .head { --s: 4; border-radius: 6px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+
+/* ==========================================================================
+   The best we can do: eclipse intro, live pill, sparkle trail, magnetic PLAY.
+   ========================================================================== */
+
+/* Startup eclipse (WebGL canvas in place of the logo). */
+#splash { background: radial-gradient(60% 60% at 50% 42%, #140f22, #07060b 70%) !important; }
+.splash-eclipse { width: 300px; height: 300px; margin: -40px 0 -50px; }
+#splash.has-eclipse .splash-title { opacity: 0; animation: ui2-title-in .8s var(--ease) 1.15s forwards; }
+#splash.has-eclipse .splash-bar { display: none; }
+@keyframes ui2-title-in { from { opacity: 0; transform: translateY(10px); letter-spacing: 14px; filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+#splash.gone { transition: opacity .6s ease, transform .6s var(--ease), filter .6s ease !important; filter: blur(8px); }
+
+/* The pill above the title: NOW PLAYING, or IN GAME with a timer and a green live dot. */
+#tab-play .hero-text::before { content: attr(data-pill) !important; }
+#tab-play .hero-text.live::before { border-color: rgba(91, 227, 155, .45); background: rgba(40, 160, 100, .18); color: #c9ffe2 !important; }
+#tab-play .hero-text.live::after { background: #5be39b; box-shadow: 0 0 10px #5be39b; }
+
+/* Sparkle trail on the Play page. */
+.trail {
+  position: absolute; z-index: 30; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; pointer-events: none;
+  background: radial-gradient(circle, #fff 0 25%, rgba(196, 178, 255, .9) 40%, transparent 70%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  transform: scale(var(--s)); animation: ui2-trail .8s ease-out forwards;
+}
+@keyframes ui2-trail { to { opacity: 0; translate: var(--x) var(--y); transform: scale(0) rotate(90deg); } }
+
+/* Magnetic PLAY: the lean (translate, from ui2.js) eases in and out. */
+.play-btn { transition: translate .25s var(--ease), transform .2s var(--ease), box-shadow .25s ease, filter .2s ease !important; }
