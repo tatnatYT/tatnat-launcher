@@ -35,9 +35,9 @@
     const plus = !!session?.plus;
     $('plusBuy').hidden = plus;
     $('plusOwned').hidden = !plus;
-    $('plusKeyRow').hidden = plus || !s?.available;
+    $('plusKeyRow').hidden = plus || !s?.available || !s.checkout;
     $('plusBuy').disabled = !s?.available || !s.checkout;
-    $('plusBuy').querySelector('span').textContent = s?.available ? 'Get Plus' : 'Coming soon';
+    $('plusBuy').querySelector('span').textContent = !s?.available ? 'Coming soon' : s.checkout ? 'Get Plus' : 'Buying opens soon';
     $('plusWho').textContent = !s?.available ? 'Eclipse Plus is coming soon'
       : !s.account ? 'Add an account to use Eclipse Plus'
       : s.account.type !== 'microsoft' ? 'Eclipse Plus needs a Microsoft account (offline accounts have no cape)'

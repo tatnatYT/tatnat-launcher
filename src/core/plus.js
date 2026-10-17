@@ -7,8 +7,8 @@
 const fs = require('fs');
 const path = require('path');
 
-/** The Plus server. Empty until it's deployed: Plus then shows as "coming soon". */
-const SERVER = (process.env.ECLIPSE_PLUS_SERVER || '').replace(/\/+$/, '');
+/** The Plus server (a Cloudflare Worker; see the eclipse-plus-server repo). */
+const SERVER = (process.env.ECLIPSE_PLUS_SERVER || 'https://eclipse-plus.eclipse-plus-server.workers.dev').replace(/\/+$/, '');
 /** Where "Buy Eclipse Plus" goes (the Lemon Squeezy checkout). */
 const CHECKOUT = process.env.ECLIPSE_PLUS_CHECKOUT || '';
 
