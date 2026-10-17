@@ -528,3 +528,49 @@ html[data-bgfx="off"] :is(.panel-head h2, #tab-play .hero-text h1) { animation: 
 
 /* Magnetic PLAY: the lean (translate, from ui2.js) eases in and out. */
 .play-btn { transition: translate .25s var(--ease), transform .2s var(--ease), box-shadow .25s ease, filter .2s ease !important; }
+
+/* ==========================================================================
+   EVEN cooler: letter-by-letter intro, warp, holographic capes, living menu icons, deeper page transitions.
+   ========================================================================== */
+
+/* Hyperspace canvas over the page when PLAY is pressed. */
+.warp { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 60; pointer-events: none; mix-blend-mode: screen; opacity: 0; }
+
+/* Holographic shine on the Plus capes: a rainbow foil that moves with the mouse. */
+.plus-cape:not(.locked):hover::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: color-dodge; opacity: .55;
+  background:
+    radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, .35), transparent 45%),
+    linear-gradient(calc(115deg + var(--ry, 0deg) * 6), transparent 15%, rgba(255, 80, 200, .35) 30%, rgba(80, 220, 255, .35) 45%,
+      rgba(255, 240, 120, .3) 60%, rgba(160, 110, 255, .35) 75%, transparent 90%);
+  background-size: 100% 100%, 220% 220%;
+  background-position: 0 0, calc(var(--mx, 50%) * -.6) calc(var(--my, 50%) * -.4);
+}
+
+/* Menu icons come alive on hover, each in its own way. */
+.nav-btn:hover .nav-icon svg, .nav-btn:hover .nav-icon img { transform-origin: 50% 50%; }
+.nav-btn[data-tab="play"]:hover .nav-icon svg { animation: ui2-i-pulse .8s ease-in-out infinite; }
+.nav-btn[data-tab="modpacks"]:hover .nav-icon svg { animation: ui2-i-bob .9s ease-in-out infinite; }
+.nav-btn[data-tab="mods"]:hover .nav-icon svg { animation: ui2-i-turn 1.4s var(--ease) infinite; }
+.nav-btn[data-tab="packs"]:hover .nav-icon svg { animation: ui2-i-wiggle .6s ease-in-out infinite; }
+.nav-btn[data-tab="shaders"]:hover .nav-icon svg { animation: ui2-i-spin 2.4s linear infinite; }
+.nav-btn[data-tab="accounts"]:hover .nav-icon svg { animation: ui2-i-bob .9s ease-in-out infinite; }
+.nav-btn[data-tab="skins"]:hover .nav-icon svg { transform-origin: 50% 10%; animation: ui2-i-swing 1s ease-in-out infinite; }
+.nav-btn[data-tab="plus"]:hover .nav-icon img { animation: ui2-i-glow 1.2s ease-in-out infinite; }
+.nav-btn[data-tab="console"]:hover .nav-icon svg { animation: ui2-i-blink .8s steps(2) infinite; }
+.nav-btn[data-tab="settings"]:hover .nav-icon svg { animation: ui2-i-wiggle .8s ease-in-out infinite; }
+.nav-btn[data-tab="credits"]:hover .nav-icon svg { animation: ui2-i-beat .9s ease-in-out infinite; }
+@keyframes ui2-i-pulse { 50% { transform: scale(1.22); filter: drop-shadow(0 0 6px rgba(180, 156, 255, .9)); } }
+@keyframes ui2-i-bob { 50% { transform: translateY(-3px); } }
+@keyframes ui2-i-turn { 60%, 100% { transform: rotateY(360deg); } }
+@keyframes ui2-i-wiggle { 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+@keyframes ui2-i-spin { to { transform: rotate(360deg); } }
+@keyframes ui2-i-swing { 25% { transform: rotate(12deg); } 75% { transform: rotate(-12deg); } }
+@keyframes ui2-i-glow { 50% { transform: scale(1.15) rotate(-8deg); filter: drop-shadow(0 0 8px rgba(196, 178, 255, 1)); } }
+@keyframes ui2-i-blink { 50% { opacity: .35; } }
+@keyframes ui2-i-beat { 15%, 45% { transform: scale(1.25); } 30% { transform: scale(1.05); } }
+
+/* Pages arrive from a little depth, coming into focus. */
+.tab.active { animation: ui2-page-3d .5s var(--ease) both !important; transform-origin: 50% 30%; }
+@keyframes ui2-page-3d { from { opacity: 0; transform: perspective(1200px) translateZ(-60px) rotateX(4deg); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+html[data-bgfx="off"] .tab.active { animation: none !important; }

@@ -516,6 +516,51 @@
   pill();
   setInterval(pill, 1000);
 
+  // ---------- EVEN cooler ----------
+
+  // Hyperspace: stars streak past for a moment when you press PLAY.
+  function warp() {
+    if (calm()) return;
+    const cv = document.createElement('canvas');
+    cv.className = 'warp';
+    const r = main.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = r.width * dpr; cv.height = r.height * dpr;
+    main.append(cv);
+    const g = cv.getContext('2d');
+    const W = cv.width, H = cv.height, cx = W / 2, cy = H * .45;
+    const stars = Array.from({ length: 420 }, () => ({ x: (Math.random() - .5) * W * 2, y: (Math.random() - .5) * H * 2, z: Math.random() * 1 + .05, pz: 0 }));
+    stars.forEach(s => { s.pz = s.z; });
+    const t0 = performance.now(), dur = 1500;
+    const tickW = now => {
+      const t = (now - t0) / dur;
+      if (t >= 1) { cv.remove(); return; }
+      const speed = .004 + Math.pow(Math.sin(Math.min(t, 1) * Math.PI), 1.6) * .05;
+      g.clearRect(0, 0, W, H);
+      g.lineCap = 'round';
+      for (const s of stars) {
+        s.pz = s.z;
+        s.z -= speed;
+        if (s.z <= .02) { s.x = (Math.random() - .5) * W * 2; s.y = (Math.random() - .5) * H * 2; s.z = 1; s.pz = 1; continue; }
+        const x = cx + s.x / s.z * .5, y = cy + s.y / s.z * .5;
+        const px = cx + s.x / s.pz * .5, py = cy + s.y / s.pz * .5;
+        const a = Math.min(1, (1 - s.z) * 1.6);
+        g.strokeStyle = `rgba(${210 + (s.x % 40) | 0}, ${195}, 255, ${a})`;
+        g.lineWidth = (1 - s.z) * 3 * dpr;
+        g.beginPath(); g.moveTo(px, py); g.lineTo(x, y); g.stroke();
+      }
+      cv.style.opacity = String(Math.min(1, t * 6, (1 - t) * 3));
+      requestAnimationFrame(tickW);
+    };
+    requestAnimationFrame(tickW);
+  }
+  play?.addEventListener('click', () => {
+    if (play.classList.contains('running') || play.disabled) return;
+    if (typeof activeAccount === 'function' && !activeAccount()) return;
+    warp();
+  });
+  window.eclipseWarp = warp;
+
   const fill = $id('progressFill');
   if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
     .observe(fill, { attributes: true, attributeFilter: ['style'] });
