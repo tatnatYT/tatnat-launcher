@@ -265,6 +265,84 @@
     document.body.append(burst);
     setTimeout(() => burst.remove(), 1200);
   });
+  // ---------- even cooler, part 3 ----------
+  // An eclipse corona turning around the player's head.
+  const avatar = document.createElement('div');
+  avatar.className = 'hero-avatar';
+  heroHead.before(avatar);
+  avatar.append(Object.assign(document.createElement('i'), { className: 'corona' }), heroHead);
+  new MutationObserver(() => { avatar.hidden = heroHead.hidden; }).observe(heroHead, { attributes: true, attributeFilter: ['hidden'] });
+  avatar.hidden = heroHead.hidden;
+
+  // The menu highlight stretches to the new item, then lets go of the old one.
+  if (typeof moveIndicator === 'function') {
+    const plain = moveIndicator;
+    let lastY = null;
+    window.moveIndicator = function () {
+      const active = document.querySelector('.nav-btn.active');
+      const ind = $id('navIndicator');
+      if (!active || lastY === null || calm()) { plain(); lastY = active ? active.offsetTop : null; return; }
+      const y = active.offsetTop, h = active.offsetHeight;
+      if (y === lastY) { plain(); return; }
+      const top = Math.min(lastY, y), bottom = Math.max(lastY, y) + h;
+      ind.style.transform = `translateY(${top}px)`;
+      ind.style.height = `${bottom - top}px`;
+      lastY = y;
+      clearTimeout(ind._t);
+      ind._t = setTimeout(() => { ind.style.transform = `translateY(${y}px)`; ind.style.height = `${h}px`; }, 150);
+    };
+    requestAnimationFrame(() => { lastY = document.querySelector('.nav-btn.active')?.offsetTop ?? null; });
+  }
+
+  // A sweep of light across the page when you switch pages, and a few sparks from the menu item.
+  if (typeof showTab === 'function') {
+    const plainShow = showTab;
+    let current = document.querySelector('.tab.active')?.id;
+    window.showTab = function (name) {
+      const r = plainShow(name);
+      if (`tab-${name}` !== current && !calm()) {
+        current = `tab-${name}`;
+        const sweep = document.createElement('div');
+        sweep.className = 'page-sweep';
+        main.append(sweep);
+        setTimeout(() => sweep.remove(), 800);
+      }
+      return r;
+    };
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest?.('.nav-btn');
+    if (!b || calm()) return;
+    const r = b.querySelector('.nav-icon')?.getBoundingClientRect() || b.getBoundingClientRect();
+    const s = document.createElement('div');
+    s.className = 'launch-burst mini';
+    s.style.left = `${r.left + r.width / 2}px`;
+    s.style.top = `${r.top + r.height / 2}px`;
+    s.innerHTML = Array.from({ length: 8 }, (_, i) => {
+      const a = (i / 8) * Math.PI * 2, d = 16 + Math.random() * 14;
+      return `<b style="--x:${(Math.cos(a) * d).toFixed(1)}px;--y:${(Math.sin(a) * d).toFixed(1)}px;--d:${(.35 + Math.random() * .2).toFixed(2)}s"></b>`;
+    }).join('');
+    document.body.append(s);
+    setTimeout(() => s.remove(), 700);
+  });
+
+  // Easter egg: the Konami code (up up down down left right left right B A) starts a meteor shower.
+  const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+  let kpos = 0;
+  document.addEventListener('keydown', e => {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    kpos = k === KONAMI[kpos] ? kpos + 1 : (k === KONAMI[0] ? 1 : 0);
+    if (kpos < KONAMI.length) return;
+    kpos = 0;
+    const box = document.createElement('div');
+    box.className = 'meteor-shower';
+    box.innerHTML = Array.from({ length: 46 }, () =>
+      `<i style="left:${(Math.random() * 130).toFixed(1)}%;top:${(Math.random() * 50 - 20).toFixed(1)}%;--d:${(0.7 + Math.random() * 0.9).toFixed(2)}s;--w:${(0 + Math.random() * 3.2).toFixed(2)}s;--l:${(90 + Math.random() * 160) | 0}px"></i>`).join('');
+    main.append(box);
+    if (typeof toast === 'function') toast('Meteor shower!');
+    setTimeout(() => box.remove(), 5000);
+  });
+
   const fill = $id('progressFill');
   if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
     .observe(fill, { attributes: true, attributeFilter: ['style'] });

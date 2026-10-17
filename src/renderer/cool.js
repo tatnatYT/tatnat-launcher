@@ -56,11 +56,8 @@
     });
   }
 
-  // tatnat's head in Credits (made by); the player's own head in the sidebar.
+  // tatnat's head in Credits (made by). The player's own head in the sidebar stays a still, flat face.
   replaceWithHead('img.creator-head', 112, 'look');
-  const card = document.getElementById('cardHead');
-  card.classList.add('head3d-host');
-  card.append(head3d(30, { mode: 'sway' })); // skin comes from paintHead() setting --skin on the host
 
   // ---------- startup splash ----------
   const splash = document.createElement('div');
