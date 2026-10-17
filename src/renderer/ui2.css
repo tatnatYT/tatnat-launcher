@@ -589,3 +589,22 @@ html[data-bgfx="off"] .tab.active { animation: none !important; }
   animation: ui2-shock .6s cubic-bezier(.1, .7, .3, 1) forwards;
 }
 @keyframes ui2-shock { from { transform: scale(.2); opacity: 1; } to { transform: scale(7); opacity: 0; } }
+
+/* ==========================================================================
+   1000x: PLAY focus, solar-flare quake, light flowing around the play panel.
+   ========================================================================== */
+#tab-play > :not(.dock), .sidebar { transition: opacity .45s var(--ease), filter .45s var(--ease); }
+body.play-focus #tab-play > :not(.dock) { opacity: .5; filter: saturate(.6) blur(1px); }
+body.play-focus .sidebar { opacity: .55; filter: saturate(.6); }
+body.play-focus #tab-play .dock { border-color: rgba(214, 200, 255, .5) !important; box-shadow: 0 0 0 1px rgba(180, 156, 255, .25), 0 20px 60px rgba(110, 70, 220, .45) !important; }
+
+main.quake .bg-stage { animation: ui2-quake .5s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes ui2-quake { 10%, 90% { translate: -1px 0; } 20%, 80% { translate: 3px 1px; } 30%, 50%, 70% { translate: -5px -1px; } 40%, 60% { translate: 5px 1px; } }
+
+#tab-play .dock::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--spin), transparent 0 60%, rgba(196, 178, 255, .9) 75%, rgba(120, 160, 255, .7) 82%, transparent 92%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: ui2-spin 7s linear infinite; opacity: .75;
+}
+html[data-bgfx="off"] #tab-play .dock::after { animation: none; opacity: .3; }

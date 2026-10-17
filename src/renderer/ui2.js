@@ -372,7 +372,7 @@
         col+=vec3(1.,.97,1.)*smoothstep(R+.004,R-.004,r);
         float moon=smoothstep(R+.007,R-.001,length(uv-mc));
         col=mix(col,vec3(.035,.025,.06),moon);
-        float fl=exp(-pow((t-1.2)*6.,2.));
+        float fl=exp(-((t-1.2)*6.)*((t-1.2)*6.));
         vec2 dp=vec2(-R*.62,R*.79);float d=length(uv-dp);
         col+=vec3(1.,.95,1.)*fl*(.025/(d+.012))*(1.-moon*.92);
         col+=vec3(.85,.75,1.)*fl*.0012/(abs(uv.y-dp.y)+.003)*exp(-abs(uv.x-dp.x)*9.)*(1.-moon);
@@ -410,7 +410,7 @@
     document.getElementById('splash')?.classList.add('has-eclipse');
   })();
 
-  // Interface sounds: tiny synthesised clicks and a launch chime (no sound files). Settings > Interface sounds.
+  // Sounds: a synthesised launch chime (no sound files). Settings > Launch sound.
   const sound = (() => {
     let ctx = null, on = true;
     try { on = localStorage.getItem('ui-sounds') !== '0'; } catch { /* storage off */ }
@@ -420,7 +420,7 @@
       box.addEventListener('change', () => {
         on = box.checked;
         try { localStorage.setItem('ui-sounds', on ? '1' : '0'); } catch { /* storage off */ }
-        if (on) play('tick');
+        if (on) play('launch');
       });
     }
     function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
@@ -451,14 +451,7 @@
     }
     return play;
   })();
-  document.addEventListener('click', e => {
-    const el = e.target.closest?.('button, .switch, select');
-    if (!el || el.disabled) return;
-    if (el.id === 'play') return; // has its own chime
-    sound(el.closest('.nav-btn, .segmented, .chips') ? 'tick' : 'soft');
-  }, true);
-  open.addEventListener('click', () => sound('open'));
-  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && wrap.hidden === false) sound('open'); });
+  // (No click sounds: only the launch chime and the solar flare make a sound.)
 
   // Magnetic PLAY: the button leans towards the mouse when it comes near.
   if (play) {
@@ -560,6 +553,34 @@
     warp();
   });
   window.eclipseWarp = warp;
+
+  // ---------- 1000x: the Live eclipse wallpaper reacts to you ----------
+  const live = window.liveBg;
+  if (live) {
+    main.addEventListener('pointermove', e => live.mouse(e.clientX, e.clientY), { passive: true });
+    main.addEventListener('pointerleave', () => { live.tx = 9; live.ty = 9; });
+    // Click the eclipse: a solar flare.
+    document.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || calm() || !live.hit(e.clientX, e.clientY)) return;
+      if (e.target.closest('button, input, select, a, .home-tile')) return;
+      live.fl = 1;
+      sound('launch');
+      main.classList.remove('quake');
+      void main.offsetWidth;
+      main.classList.add('quake');
+      setTimeout(() => main.classList.remove('quake'), 600);
+    });
+    // Hover PLAY: everything else steps back and the corona flares up.
+    play?.addEventListener('pointerenter', () => {
+      if (calm() || play.disabled) return;
+      live.boostTarget = 1;
+      document.body.classList.add('play-focus');
+    });
+    play?.addEventListener('pointerleave', () => {
+      live.boostTarget = 0;
+      document.body.classList.remove('play-focus');
+    });
+  }
 
   // Clicking empty space sends out a small shockwave (buttons have their own ripple).
   main.addEventListener('pointerdown', e => {

@@ -1,6 +1,23 @@
 // "Live eclipse": an animated WebGL wallpaper for the background picker (backgrounds.js): drifting
 // nebula clouds, twinkling stars and a slowly turning eclipse corona. Drawn at half resolution and
 // 30 frames a second, paused while the window is hidden, one still frame with effects Off.
+// Shared state the rest of the page drives (ui2.js): mouse position in shader units, the PLAY-hover
+// boost and the solar flare. hit() says whether a screen point is on the eclipse.
+window.liveBg = {
+  tx: 9, ty: 9, mx: 9, my: 9, boost: 0, boostTarget: 0, fl: 0, canvas: null,
+  toShader(x, y) {
+    const r = this.canvas?.getBoundingClientRect();
+    if (!r || !r.height) return null;
+    return [(x - r.left - r.width / 2) / r.height, (r.top + r.height / 2 - y) / r.height, r.width / r.height];
+  },
+  mouse(x, y) { const p = this.toShader(x, y); if (p) { this.tx = p[0]; this.ty = p[1]; } },
+  hit(x, y) {
+    if (!this.canvas?.isConnected) return false;
+    const p = this.toShader(x, y);
+    return !!p && Math.hypot(p[0] - (p[2] * .5 - .36), p[1] - .355) < .085;
+  },
+};
+
 window.makeLiveEclipse = function makeLiveEclipse() {
   const el = document.createElement('div');
   el.className = 'bg-layer bg-live';
@@ -10,7 +27,7 @@ window.makeLiveEclipse = function makeLiveEclipse() {
   if (!gl) { el.classList.add('bg-live-fallback'); return el; }
 
   const VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
-  const FS = `precision highp float;uniform vec2 res;uniform float t;
+  const FS = `precision highp float;uniform vec2 res;uniform float t;uniform vec2 m;uniform float boost;uniform float fl;
     float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
     float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
@@ -19,10 +36,13 @@ window.makeLiveEclipse = function makeLiveEclipse() {
       vec2 p=(gl_FragCoord.xy-.5*res)/res.y;
       vec3 col=mix(vec3(.018,.014,.04),vec3(.055,.03,.1),uv.y);
       // nebula
-      vec2 q=p*1.5+vec2(t*.012,-t*.004);
+      // the mouse parts the clouds and lights them up
+      vec2 dm=p-m;float md=length(dm);
+      vec2 q=p*1.5+vec2(t*.012,-t*.004)+normalize(dm+1e-4)*.12*exp(-md*5.);
       float n1=fbm(q+1.4*fbm(q*1.2+vec2(t*.02,0.)));
       float n2=fbm(q*2.3-vec2(t*.016,t*.01));
       col+=vec3(.5,.2,.85)*pow(n1,2.2)*1.35+vec3(.14,.26,.7)*pow(n2,2.8)*1.;
+      col+=vec3(.42,.3,.75)*exp(-md*6.)*.22*(.4+n1);
       // stars
       vec2 g=gl_FragCoord.xy/(res.y/180.);vec2 id=floor(g);vec2 f=fract(g)-.5;
       float s=h(id);
@@ -32,8 +52,11 @@ window.makeLiveEclipse = function makeLiveEclipse() {
       vec2 c=vec2(res.x/res.y*.5-.36,.355);vec2 e=p-c;float r=length(e),a=atan(e.y,e.x);
       float R=.052;
       float rays=fbm(vec2(a*3.+t*.04,r*6.-t*.22))*.9+fbm(vec2(a*9.-t*.03,t*.15))*.45;
-      float fall=exp(-max(r-R,0.)*13.);
-      col+=vec3(.56,.42,1.)*fall*(.18+rays)*(1.05+.12*sin(t*.7))+vec3(.92,.88,1.)*pow(fall,7.);
+      float fall=exp(-max(r-R,0.)*mix(13.,7.5,boost));
+      col+=vec3(.56,.42,1.)*fall*(.18+rays)*(1.05+.12*sin(t*.7)+boost*.9+fl*2.5)+vec3(.92,.88,1.)*pow(fall,7.);
+      // solar flare: a ring of light rushing out from the eclipse
+      float wave=R+(1.-fl)*.9;
+      col+=vec3(.85,.75,1.)*exp(-(r-wave)*(r-wave)*784.)*fl*1.4+vec3(.6,.45,1.)*exp(-r*3.)*fl*.5;
       col=mix(col,vec3(.018,.013,.032),smoothstep(R+.003,R-.002,r));
       col*=1.-.4*length(uv-vec2(.5,.45));
       gl_FragColor=vec4(col,1.);
@@ -51,6 +74,8 @@ window.makeLiveEclipse = function makeLiveEclipse() {
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   const uRes = gl.getUniformLocation(prog, 'res'), uT = gl.getUniformLocation(prog, 't');
+  const uM = gl.getUniformLocation(prog, 'm'), uBoost = gl.getUniformLocation(prog, 'boost'), uFl = gl.getUniformLocation(prog, 'fl');
+  const L = window.liveBg;
 
   const t0 = performance.now() - 20000 * Math.random();
   let last = 0, drawn = false;
@@ -58,13 +83,20 @@ window.makeLiveEclipse = function makeLiveEclipse() {
     if (!el.isConnected && drawn) { gl.getExtension('WEBGL_lose_context')?.loseContext(); return; }
     requestAnimationFrame(frame);
     const still = document.documentElement.dataset.bgfx === 'off';
+    L.boost += (L.boostTarget - L.boost) * .12;
+    L.fl = Math.max(0, L.fl - .022);
+    L.mx += (L.tx - L.mx) * .15; L.my += (L.ty - L.my) * .15;
     if (document.hidden || now - last < 33 || (still && drawn)) return;
+    L.canvas = cv;
     last = now;
     const w = Math.max(2, Math.round(cv.clientWidth * .5)), hh = Math.max(2, Math.round(cv.clientHeight * .5));
     if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; drawn = false; }
     gl.viewport(0, 0, w, hh);
     gl.uniform2f(uRes, w, hh);
     gl.uniform1f(uT, (now - t0) / 1000);
+    gl.uniform2f(uM, L.mx, L.my);
+    gl.uniform1f(uBoost, L.boost);
+    gl.uniform1f(uFl, L.fl);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     drawn = el.isConnected;
   }
