@@ -1,10 +1,12 @@
 // Eclipse Plus: signing in to the Plus server, licence keys, capes, and the owner tools.
 //
-// Sign-in works like joining a Minecraft server: we ask the Plus server for a one-time server id, tell
-// Mojang this account is joining it (with the account's own Minecraft token, sent only to Mojang), and the
-// Plus server checks with Mojang who joined. It answers with a session token (24 h) that the launcher and
-// the game use for everything else. The Minecraft token never reaches the Plus server.
+// Sign-in uses the player certificate Minecraft gives every account for chat signing: the launcher asks
+// Microsoft for it (with the account's own token, sent only to Microsoft), signs the Plus server's one-time
+// challenge with the certificate's private key and sends the certificate (Mojang-signed public key) and the
+// signature. The Plus server checks both against Mojang's public keys and answers with a session token (24 h)
+// that the launcher and the game use for everything else. Tokens and private keys never leave this PC.
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 
 /** The Plus server (a Cloudflare Worker; see the eclipse-plus-server repo). */
@@ -73,20 +75,43 @@ function expiry(token) {
  * A fresh session for a Microsoft account ({ name, uuid, accessToken }), signing in again when the saved
  * one is close to expiring. {force} always signs in again (to refresh Plus/owner status).
  */
+const pemBody = pem => String(pem).replace(/-----[^-]+-----|\s/g, '');
+
+/** This account's player certificate from Microsoft (cached until it's due for a refresh). */
+let certCache = {};
+async function certificate(account) {
+  const cached = certCache[account.uuid];
+  if (cached && Date.parse(cached.refreshedAfter || cached.expiresAt) > Date.now()) return cached;
+  const r = await fetch('https://api.minecraftservices.com/player/certificates', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${account.accessToken}`, 'content-type': 'application/json' },
+  }).catch(() => null);
+  if (!r || !r.ok) throw new PlusError(`Microsoft didn't give this account's certificate${r ? ` (${r.status})` : ''}. Sign in to it again in Accounts and retry.`);
+  const cert = await r.json();
+  if (!cert?.keyPair?.privateKey || !cert.publicKeySignatureV2) throw new PlusError('This account has no Minecraft certificate. Sign in to it again in Accounts and retry.');
+  certCache[account.uuid] = cert;
+  return cert;
+}
+
+/**
+ * A fresh session for a Microsoft account ({ name, uuid, accessToken }), signing in again when the saved
+ * one is close to expiring. {force} always signs in again (to refresh Plus/owner status).
+ */
 async function session(root, account, { force = false } = {}) {
   if (!account || !account.uuid) throw new PlusError('Eclipse Plus needs a Microsoft account. Add one in Accounts.');
   const key = account.uuid.replace(/-/g, '');
   const all = readSessions(root);
   const saved = all[key];
   if (!force && saved && expiry(saved.token) - Date.now() > 3600 * 1000) return saved;
+  const cert = await certificate(account);
   const { serverId } = await call('/challenge');
-  const join = await fetch('https://sessionserver.mojang.com/session/minecraft/join', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ accessToken: account.accessToken, selectedProfile: key, serverId }),
-  }).catch(() => null);
-  if (!join || (join.status !== 204 && join.status !== 200)) throw new PlusError('Mojang did not accept this account. Sign in to it again in Accounts.');
-  const s = await call('/session', { name: account.name, serverId });
+  const privateKey = crypto.createPrivateKey({ key: Buffer.from(pemBody(cert.keyPair.privateKey), 'base64'), format: 'der', type: 'pkcs8' });
+  const signature = crypto.sign('sha256', Buffer.from(`eclipse-plus:${serverId}:${key}`), privateKey).toString('base64');
+  const s = await call('/session', {
+    name: account.name, serverId, uuid: key,
+    publicKey: pemBody(cert.keyPair.publicKey), expiresAt: cert.expiresAt,
+    keySignature: cert.publicKeySignatureV2, signature,
+  });
   all[key] = s;
   writeSessions(root, all);
   return s;
@@ -115,9 +140,28 @@ async function equip(root, account, cape) {
   return r;
 }
 
+/** A Minecraft name or UUID -> { uuid, name } (looked up here: the Plus server can't reach Mojang). */
+async function lookupPlayer(input) {
+  const text = String(input || '').trim();
+  const id = text.toLowerCase().replace(/-/g, '');
+  if (/^[0-9a-f]{32}$/.test(id)) return { uuid: id, name: null };
+  if (!/^\w{1,16}$/.test(text)) throw new PlusError('Enter a Minecraft name or UUID.');
+  const r = await fetch(`https://api.minecraftservices.com/minecraft/profile/lookup/name/${encodeURIComponent(text)}`).catch(() => null);
+  if (!r) throw new PlusError("Can't reach Minecraft to look that name up. Check your internet connection.");
+  if (r.status === 404 || r.status === 204) throw new PlusError(`There is no Minecraft account called ${text}.`);
+  if (!r.ok) throw new PlusError(`Minecraft didn't answer (${r.status}). Try again in a moment.`);
+  const p = await r.json();
+  return { uuid: String(p.id).toLowerCase(), name: String(p.name) };
+}
+
 async function admin(root, account, action, args) {
   const s = await session(root, account);
-  return call(`/admin/${action}`, { token: s.token, ...args });
+  if (args && args.player) {
+    const p = await lookupPlayer(args.player);
+    args = { ...args, player: p.uuid, name: p.name || undefined };
+  }
+  const r = await call(`/admin/${action}`, { token: s.token, ...args });
+  return { ...r, name: r.name || args?.name || null };
 }
 
 /** JVM arguments that let the Eclipse Client mod show capes and badges, or [] without Plus server/session. */
