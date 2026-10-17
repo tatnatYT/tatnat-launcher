@@ -687,6 +687,66 @@
     })() : '';
   }, 1000);
 
+  // ---------- last round ----------
+  // Switchers (loader, Browse/Installed, effects...): one highlight that slides to the chosen option.
+  function slidePill(seg) {
+    if (seg._pill) return;
+    const pill = document.createElement('i');
+    pill.className = 'seg-pill';
+    seg.prepend(pill);
+    seg._pill = pill;
+    seg.classList.add('has-pill');
+    const place = () => {
+      const on = seg.querySelector(':scope > button.on');
+      if (!on || !seg.offsetWidth) { pill.style.opacity = '0'; return; }
+      pill.style.opacity = '1';
+      pill.style.width = `${on.offsetWidth}px`;
+      pill.style.height = `${on.offsetHeight}px`;
+      pill.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
+      pill.classList.toggle('boost', on.classList.contains('boost'));
+    };
+    new MutationObserver(place).observe(seg, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    new ResizeObserver(place).observe(seg);
+    place();
+  }
+  document.querySelectorAll('.segmented').forEach(slidePill);
+
+  // A burst and a check when something finishes installing.
+  document.addEventListener('click', e => {
+    const b = e.target.closest?.('.install-btn');
+    if (!b || b.classList.contains('done')) return;
+    const watch = new MutationObserver(() => {
+      if (!b.isConnected) { watch.disconnect(); return; }
+      if (!b.classList.contains('done')) return;
+      watch.disconnect();
+      if (calm()) return;
+      b.classList.add('just-done');
+      setTimeout(() => b.classList.remove('just-done'), 900);
+      const r = b.getBoundingClientRect();
+      const s = document.createElement('div');
+      s.className = 'launch-burst mini';
+      s.style.left = `${r.left + r.width / 2}px`;
+      s.style.top = `${r.top + r.height / 2}px`;
+      s.innerHTML = '<i class="ring"></i>' + Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2, d = 30 + Math.random() * 26;
+        return `<b style="--x:${(Math.cos(a) * d).toFixed(1)}px;--y:${(Math.sin(a) * d).toFixed(1)}px;--d:${(.45 + Math.random() * .25).toFixed(2)}s"></b>`;
+      }).join('');
+      document.body.append(s);
+      setTimeout(() => s.remove(), 900);
+    });
+    watch.observe(b, { attributes: true, attributeFilter: ['class'] });
+    setTimeout(() => watch.disconnect(), 120000);
+  }, true);
+
+  // Toasts: a little bar that runs down while the message is shown (it closes after 8 seconds).
+  const toastEl = $id('toast');
+  if (toastEl) new MutationObserver(() => {
+    if (toastEl.hidden) return;
+    toastEl.classList.remove('timed');
+    void toastEl.offsetWidth;
+    toastEl.classList.add('timed');
+  }).observe(toastEl, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
+
   // Clicking empty space sends out a small shockwave (buttons have their own ripple).
   main.addEventListener('pointerdown', e => {
     if (calm() || e.button !== 0) return;
