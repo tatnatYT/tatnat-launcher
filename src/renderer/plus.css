@@ -70,3 +70,7 @@
 .plus-toast.ok { border-color: rgba(143, 240, 192, .45); }
 .plus-toast.bad { border-color: rgba(255, 143, 163, .5); }
 @keyframes plus-toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+
+/* The Eclipse Plus icon (crescent and plus). */
+.plus-icon-img { width: 20px; height: 16px; object-fit: contain; display: block; }
+.plus-chip .plus-icon-img { width: 18px; height: 14px; }
