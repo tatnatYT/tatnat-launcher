@@ -66,11 +66,7 @@
     }
     $('plusSoon').hidden = !!s?.available;
     $('plusOwner').hidden = !session?.owner;
-    if (session?.owner) {
-      const sel = $('plusGrantCape');
-      if (!sel.options.length) sel.innerHTML = (s.capes || []).map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-      loadUsers();
-    }
+    if (session?.owner) loadUsers();
   }
 
   async function load(refresh) {
@@ -139,7 +135,7 @@
     if (!player) { say('Type a Minecraft name or UUID first.', 'bad', 'plusOwnerMsg'); return; }
     say(action === 'grant' ? `Giving ${player} Eclipse Plus…` : `Taking Eclipse Plus away from ${player}…`, '', 'plusOwnerMsg');
     try {
-      const r = await api.plusAdmin(action, action === 'grant' ? { player, cape: $('plusGrantCape').value } : { player });
+      const r = await api.plusAdmin(action, { player });
       const who = r.name || player;
       say(action === 'grant' ? `${who} now has Eclipse Plus.` : r.removed ? `${who} no longer has Eclipse Plus.` : `${who} didn't have Eclipse Plus.`, 'ok', 'plusOwnerMsg');
       $('plusPlayer').value = '';

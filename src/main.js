@@ -334,7 +334,8 @@ ipcMain.handle('plus:state', async (_e, opts = {}) => {
   try {
     const acc = await skinAccount();
     const s = await plus.session(ROOT, acc, { force: !!opts.refresh });
-    out.session = { name: s.name, plus: !!s.plus, cape: s.cape, owner: !!s.owner };
+    const now = await plus.me(ROOT, acc).catch(() => s);
+    out.session = { name: s.name, plus: !!now.plus, cape: now.cape, owner: !!now.owner };
   } catch (err) {
     out.error = err.message;
   }

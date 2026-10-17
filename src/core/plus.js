@@ -126,6 +126,14 @@ function remember(root, account, changes) {
   }
 }
 
+/** Your current Plus status from the server (Plus can be given or taken away while you're signed in). */
+async function me(root, account) {
+  const s = await session(root, account);
+  const r = await call('/me', { token: s.token });
+  remember(root, account, { plus: r.plus, cape: r.cape, owner: r.owner });
+  return r;
+}
+
 async function activate(root, account, key) {
   const s = await session(root, account);
   const r = await call('/activate', { token: s.token, key });
@@ -171,4 +179,4 @@ async function jvmArgs(root, account) {
   return [`-Dtatnat.plusServer=${SERVER}`, `-Dtatnat.plusToken=${s.token}`];
 }
 
-module.exports = { SERVER, CHECKOUT, CAPES, PlusError, session, activate, equip, admin, jvmArgs, readSessions };
+module.exports = { SERVER, CHECKOUT, CAPES, PlusError, session, me, activate, equip, admin, jvmArgs, readSessions };
