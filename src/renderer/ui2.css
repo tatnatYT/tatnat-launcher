@@ -238,9 +238,7 @@ input:not(.switch):focus, select:focus { border-color: var(--accent-light) !impo
 ::-webkit-scrollbar-thumb:hover { background: rgba(196, 178, 255, .32) !important; border: 4px solid transparent !important; background-clip: padding-box !important; }
 #modsInstalled .installed-search { background: transparent; backdrop-filter: blur(14px) !important; }
 
-@media (prefers-reduced-motion: reduce) {
-  .tab.active, .tab.active > *, .enter, .play-btn::before, .progress-bar div, #tab-play .hero-text::after { animation: none !important; }
-}
+html[data-bgfx="off"] :is(.tab.active, .tab.active > *, .enter, .play-btn::before, .progress-bar div, #tab-play .hero-text::after) { animation: none !important; }
 
 /* Play: the "Now playing" pill on its own line, and quick links as icon + two lines of text. */
 #tab-play .hero-text::before { display: flex !important; width: max-content; }
@@ -363,3 +361,76 @@ html[data-bgfx="off"] .play-btn::after, html[data-bgfx="off"] .play-btn::before 
 .plus-cape { transition: transform .3s var(--ease), box-shadow .3s ease, border-color .2s ease !important; }
 .plus-cape:not(.locked):hover { transform: translateY(-4px) !important; box-shadow: 0 16px 36px rgba(0, 0, 0, .45), 0 0 24px rgba(138, 99, 232, .25) !important; }
 .cmdk-input input:focus { border: 0 !important; box-shadow: none !important; }
+
+/* ==========================================================================
+   Even cooler: parallax art, a cursor glow, 3D cards, aurora, launch burst.
+   ========================================================================== */
+
+/* Background art leans away from the mouse (ui2.js); the transition keeps it soft when effects change. */
+.bg-stage, .bg-sparkles { will-change: transform; transition: transform .6s var(--ease); }
+.bg-stage { transform: scale(1.03); }
+
+/* A soft light that follows the mouse over the page. */
+.cursor-glow {
+  position: absolute; left: -260px; top: -260px; width: 520px; height: 520px; z-index: 1; pointer-events: none;
+  border-radius: 50%; opacity: 0; transition: opacity .4s ease;
+  background: radial-gradient(circle, rgba(150, 110, 255, .16), rgba(150, 110, 255, .05) 35%, transparent 65%);
+  mix-blend-mode: screen; will-change: transform;
+}
+.cursor-glow.on { opacity: 1; }
+html[data-bgfx="off"] .cursor-glow { display: none; }
+
+/* Aurora: two slow purple and blue lights drifting behind the pages. */
+main::before {
+  content: "" !important; display: block !important; position: absolute; inset: var(--tb) 0 0 0; z-index: 1; pointer-events: none;
+  background:
+    radial-gradient(40% 50% at 20% 110%, rgba(138, 99, 232, .28), transparent 70%),
+    radial-gradient(35% 45% at 95% -10%, rgba(80, 120, 255, .16), transparent 70%);
+  animation: ui2-aurora 18s ease-in-out infinite alternate !important;
+}
+@keyframes ui2-aurora { from { transform: translate3d(-3%, 0, 0); opacity: .8; } to { transform: translate3d(3%, -2%, 0); opacity: 1; } }
+html[data-bgfx="off"] main::before { animation: none !important; }
+
+/* 3D cards: they tip towards the mouse (--rx / --ry from ui2.js). */
+.home-tiles, .plus-grid, .pack-grid, .modpacks-grid { perspective: 900px; }
+.home-tile:hover { transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-3px) !important; }
+.plus-cape:not(.locked):hover { transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px) scale(1.02) !important; }
+.pack-card:hover { transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-3px) !important; }
+.home-tile, .plus-cape, .pack-card { transform-style: preserve-3d; transition: transform .18s ease-out, border-color .2s ease, background .2s ease, box-shadow .25s ease !important; }
+/* a glossy sheen on the tilted card */
+.plus-cape:not(.locked):hover::after, .home-tile:hover::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(calc(110deg + var(--ry, 0deg) * 4), transparent 30%, rgba(255, 255, 255, .09) 48%, transparent 62%);
+}
+.home-tile { position: relative; }
+
+/* PLAY: the download fills the button while it says LOADING. */
+.play-btn:disabled {
+  opacity: 1 !important; cursor: progress; color: #fff !important;
+  background: linear-gradient(90deg, #8a63e8 0 var(--p, 0%), rgba(60, 45, 100, .9) var(--p, 0%) 100%) !important;
+  transition: background .3s ease !important;
+}
+
+/* The launch burst: two rings and a spray of sparks from the PLAY button. */
+.launch-burst { position: fixed; z-index: 300; width: 0; height: 0; pointer-events: none; }
+.launch-burst .ring {
+  position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border-radius: 50%;
+  border: 2px solid rgba(214, 200, 255, .9); box-shadow: 0 0 24px rgba(180, 156, 255, .9), inset 0 0 18px rgba(180, 156, 255, .6);
+  animation: ui2-ring .8s cubic-bezier(.1, .7, .3, 1) forwards;
+}
+.launch-burst .ring.r2 { animation-delay: .12s; opacity: 0; border-width: 1px; }
+@keyframes ui2-ring { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(4.2); opacity: 0; } }
+.launch-burst b {
+  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 2px;
+  background: #efe9ff; box-shadow: 0 0 10px 2px rgba(180, 156, 255, .95);
+  animation: ui2-spark var(--d) cubic-bezier(.15, .8, .3, 1) forwards;
+}
+@keyframes ui2-spark { from { transform: translate(0, 0) scale(1.2); opacity: 1; } to { transform: translate(var(--x), var(--y)) scale(.2); opacity: 0; } }
+
+/* Title: the decoding letters glow slightly. */
+#heroVersion { font-variant-numeric: tabular-nums; }
+
+/* Sidebar logo: a slow halo. */
+.brand .logo { animation: ui2-halo 5s ease-in-out infinite; }
+@keyframes ui2-halo { 50% { box-shadow: 0 4px 26px rgba(160, 120, 255, .6) !important; } }
+html[data-bgfx="off"] .brand .logo { animation: none; }

@@ -170,4 +170,102 @@
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); wrap.hidden ? show() : close(); }
   });
+
+  // ---------- even cooler ----------
+  // Settings > Background effects > Off is the switch for these (not Windows' animation setting: the launcher is meant to move).
+  const calm = () => document.documentElement.dataset.bgfx === 'off';
+  const main = document.querySelector('main');
+
+  // A soft glow that follows the mouse over the page, and the background art leaning the other way (parallax).
+  const glow = document.createElement('div');
+  glow.className = 'cursor-glow';
+  (document.getElementById("bgSparkles") || main.firstChild).after(glow);
+  const stage = $id('bgStage'), sparkles = $id('bgSparkles');
+  let px = 0, py = 0, tx = 0, ty = 0, gx = -999, gy = -999, raf = 0;
+  function frame() {
+    raf = 0;
+    px += (tx - px) * .08; py += (ty - py) * .08;
+    if (!calm()) {
+      stage.style.transform = `translate3d(${px * -14}px, ${py * -10}px, 0) scale(1.03)`;
+      sparkles.style.transform = `translate3d(${px * -26}px, ${py * -18}px, 0)`;
+    } else {
+      stage.style.transform = sparkles.style.transform = '';
+    }
+    glow.style.transform = `translate3d(${gx}px, ${gy}px, 0)`;
+    if (Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002) raf = requestAnimationFrame(frame);
+  }
+  main.addEventListener('pointermove', e => {
+    const r = main.getBoundingClientRect();
+    tx = (e.clientX - r.left) / r.width - .5;
+    ty = (e.clientY - r.top) / r.height - .5;
+    gx = e.clientX - r.left; gy = e.clientY - r.top;
+    glow.classList.add('on');
+    if (!raf) raf = requestAnimationFrame(frame);
+  }, { passive: true });
+  main.addEventListener('pointerleave', () => glow.classList.remove('on'));
+
+  // Cards tilt towards the mouse in 3D.
+  const TILT = '.home-tile, .plus-cape:not(.locked), .pack-card';
+  let tilted = null;
+  document.addEventListener('pointermove', e => {
+    const el = e.target.closest?.(TILT);
+    if (tilted && tilted !== el) { tilted.style.removeProperty('--rx'); tilted.style.removeProperty('--ry'); }
+    tilted = el;
+    if (!el || calm()) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--rx', `${((e.clientY - r.top) / r.height - .5) * -10}deg`);
+    el.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - .5) * 12}deg`);
+  }, { passive: true });
+
+  // The big Play title "decodes" into the new name whenever the version changes.
+  const title = $id('heroVersion');
+  const GLYPHS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#$%&*+=<>/';
+  // Observer callbacks run later, so our own frames are recognised by their text.
+  let mine = '', target = title?.textContent || '';
+  function scramble(to) {
+    if (calm() || title.textContent === to) { title.textContent = to; return; }
+    const start = performance.now(), dur = 560;
+    const step = now => {
+      if (target !== to) return; // a newer change took over
+      const t = Math.min(1, (now - start) / dur);
+      let out = '';
+      for (let i = 0; i < to.length; i++) {
+        const settle = (i / to.length) * .65 + .35;
+        out += t >= settle || to[i] === ' ' ? to[i] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      }
+      mine = out;
+      title.textContent = out;
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  if (title) new MutationObserver(() => {
+    if (title.textContent === mine || title.textContent === target) return;
+    const next = title.textContent;
+    mine = target;
+    title.textContent = target;
+    target = next;
+    scramble(next);
+  }).observe(title, { childList: true, characterData: true, subtree: true });
+
+  // PLAY: a burst of light and sparks when a game starts, and the download progress fills the button.
+  const play = $id('play');
+  play?.addEventListener('pointerdown', () => {
+    if (play.disabled || play.classList.contains('running') || calm()) return;
+    if (typeof activeAccount === 'function' && !activeAccount()) return;
+    const r = play.getBoundingClientRect();
+    const burst = document.createElement('div');
+    burst.className = 'launch-burst';
+    burst.style.left = `${r.left + r.width / 2}px`;
+    burst.style.top = `${r.top + r.height / 2}px`;
+    burst.innerHTML = '<i class="ring"></i><i class="ring r2"></i>' + Array.from({ length: 18 }, (_, i) => {
+      const a = (i / 18) * Math.PI * 2 + Math.random() * .3, d = 70 + Math.random() * 90;
+      return `<b style="--x:${(Math.cos(a) * d).toFixed(1)}px;--y:${(Math.sin(a) * d).toFixed(1)}px;--d:${(.5 + Math.random() * .35).toFixed(2)}s"></b>`;
+    }).join('');
+    document.body.append(burst);
+    setTimeout(() => burst.remove(), 1200);
+  });
+  const fill = $id('progressFill');
+  if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
+    .observe(fill, { attributes: true, attributeFilter: ['style'] });
 })();

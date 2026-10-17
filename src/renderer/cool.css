@@ -291,10 +291,7 @@ input:focus, select:focus { box-shadow: 0 0 0 3px rgba(138, 99, 232,.18); }
 .login-card { animation: hero-in .5s cubic-bezier(.2,.8,.2,1) both; border-color: rgba(138, 99, 232,.25); box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 60px rgba(138, 99, 232,.12); }
 .modal-card { animation: hero-in .3s cubic-bezier(.2,.8,.2,1) both; }
 
-/* ---------- respect reduced motion ---------- */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-}
+/* Motion is switched off with Settings > Background effects > Off (theme.css / ui2.css), not by Windows' animation setting. */
 
 /* ---------- self-update card ---------- */
 .update-card {
