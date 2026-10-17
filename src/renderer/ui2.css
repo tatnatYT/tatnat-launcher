@@ -729,3 +729,6 @@ html[data-bgfx="off"] .seg-pill { transition: none; }
   animation: ui2-toast-timer 8s linear forwards;
 }
 @keyframes ui2-toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* The splash content stays hidden until the eclipse intro takes over (or falls back to the plain logo). */
+#splash:not(.has-eclipse):not(.plain) .splash-inner { opacity: 0; }
