@@ -371,13 +371,14 @@
         vec3 col=vec3(.58,.44,1.)*corona+vec3(.85,.8,1.)*pow(fall,5.)*mix(.15,1.1,k);
         col+=vec3(1.,.97,1.)*smoothstep(R+.004,R-.004,r);
         float moon=smoothstep(R+.007,R-.001,length(uv-mc));
-        col=mix(col,vec3(.03,.02,.05),moon);
+        col=mix(col,vec3(.035,.025,.06),moon);
         float fl=exp(-pow((t-1.2)*6.,2.));
         vec2 dp=vec2(-R*.62,R*.79);float d=length(uv-dp);
-        col+=vec3(1.,.95,1.)*fl*(.025/(d+.012));
-        col+=vec3(.85,.75,1.)*fl*.003/(abs(uv.y-dp.y)+.003)*exp(-abs(uv.x-dp.x)*5.);
+        col+=vec3(1.,.95,1.)*fl*(.025/(d+.012))*(1.-moon*.92);
+        col+=vec3(.85,.75,1.)*fl*.0012/(abs(uv.y-dp.y)+.003)*exp(-abs(uv.x-dp.x)*9.)*(1.-moon);
         col*=smoothstep(0.,.25,t)*smoothstep(.5,.3,r);
-        float al=clamp(max(max(col.r,col.g),col.b),0.,1.);
+        // the moon is a solid dark disc, not see-through
+        float al=max(clamp(max(max(col.r,col.g),col.b),0.,1.),moon*smoothstep(0.,.25,t));
         gl_FragColor=vec4(min(col,vec3(1.)),al);
       }`;
     const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
