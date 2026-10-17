@@ -227,6 +227,9 @@ function createWindow() {
     title: 'Eclipse Launcher',
     icon: ICON,
     autoHideMenuBar: true,
+    // No Windows frame: the page draws its own title bar, Windows draws the buttons over its right end.
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#0b0a0e', symbolColor: '#c9c3d8', height: 36 },
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));

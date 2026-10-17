@@ -1,0 +1,365 @@
+/* ==========================================================================
+   Eclipse UI 2: glass panels over the background art, a custom title bar, softer corners,
+   gradient accents and smooth page transitions. Loaded last, so it overrides every other sheet.
+   Blur only sits on a handful of large surfaces (never on list rows), and Settings >
+   Background effects > Off turns it off completely.
+   ========================================================================== */
+
+:root {
+  --r: 12px;
+  --r-sm: 8px;
+  --glass: rgba(20, 18, 28, .58);
+  --glass-2: rgba(30, 27, 40, .66);
+  --glass-line: rgba(196, 178, 255, .12);
+  --glass-line-2: rgba(196, 178, 255, .22);
+  --glow: 0 0 0 1px rgba(138, 99, 232, .45), 0 8px 30px rgba(110, 70, 220, .35);
+  --grad: linear-gradient(135deg, #a07cf6 0%, #7c55e6 55%, #6340cf 100%);
+  --grad-hover: linear-gradient(135deg, #b190ff 0%, #8b64f0 55%, #6f4cdb 100%);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --tb: 36px;
+}
+
+/* ---------- title bar (the window has no Windows frame; the controls are drawn over the top right) ---------- */
+.titlebar {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--tb); z-index: 50;
+  display: flex; align-items: center; padding: 0 18px;
+  -webkit-app-region: drag; background: #0b0a0e;
+}
+.tb-crumb { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+.tb-crumb span { color: var(--faint); font-weight: 500; }
+.tb-crumb b { color: var(--text); font-weight: 600; }
+.tb-crumb i { width: 4px; height: 4px; border-radius: 50%; background: var(--faint); }
+.tab { top: var(--tb); }
+.bg-stage, .bg-sparkles { top: var(--tb); }
+main::after { top: var(--tb); }
+.brand { -webkit-app-region: drag; }
+.sidebar button, .sidebar a { -webkit-app-region: no-drag; }
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  background:
+    radial-gradient(120% 40% at 0% 0%, rgba(138, 99, 232, .14), transparent 70%),
+    linear-gradient(180deg, #0d0b12, #09080c) !important;
+  border-right: 1px solid rgba(255, 255, 255, .05);
+}
+.brand { border-bottom-color: rgba(255, 255, 255, .06); }
+.brand .logo { box-shadow: 0 4px 18px rgba(138, 99, 232, .35) !important; transition: transform .4s var(--ease); }
+.brand:hover .logo { transform: rotate(-12deg) scale(1.06); }
+.nav-btn { position: relative; transition: color .18s ease, background .18s ease; }
+.nav-btn .nav-icon { transition: transform .25s var(--ease), color .18s ease; }
+.nav-btn:hover .nav-icon { transform: translateX(2px) !important; }
+.nav-btn:hover { background: rgba(255, 255, 255, .035); }
+.nav-indicator {
+  background: linear-gradient(90deg, rgba(138, 99, 232, .26), rgba(138, 99, 232, .06)) !important;
+  border: 1px solid rgba(180, 156, 255, .14);
+  transition: transform .35s var(--ease), height .35s var(--ease) !important;
+}
+.nav-indicator::before { background: var(--accent-light) !important; box-shadow: 0 0 12px 1px rgba(180, 156, 255, .8) !important; }
+.nav-btn.active .nav-icon { color: var(--accent-light); filter: drop-shadow(0 0 6px rgba(180, 156, 255, .6)); }
+.nav-plus .nav-text {
+  background: linear-gradient(90deg, #e9e2ff, #b49cff 60%, #8a63e8); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; font-weight: 600;
+}
+.status-card, .account-card, .update-card {
+  background: rgba(255, 255, 255, .025) !important; border-color: rgba(255, 255, 255, .06) !important;
+  transition: border-color .18s ease, background .18s ease;
+}
+.status-card:hover, .account-card:hover, .update-card:hover { background: rgba(255, 255, 255, .045) !important; border-color: var(--glass-line-2) !important; }
+.status-card.running .status-light { animation: ui2-pulse 1.8s ease-in-out infinite !important; }
+@keyframes ui2-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(138, 99, 232, .55); } 50% { box-shadow: 0 0 0 6px rgba(138, 99, 232, 0); } }
+.account-card .head { border-radius: 6px; overflow: hidden; }
+
+/* ---------- background behind every page: the art stays visible, a little darker away from Play ---------- */
+main:not(:has(#tab-play.active))::after { background-color: rgba(10, 9, 14, .72); }
+
+/* ---------- page transitions ---------- */
+.tab.active { animation: ui2-page .38s var(--ease) both !important; }
+@keyframes ui2-page { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.tab.active > * { animation: ui2-rise .5s var(--ease) both; }
+.tab.active > :nth-child(2) { animation-delay: .04s; }
+.tab.active > :nth-child(3) { animation-delay: .08s; }
+.tab.active > :nth-child(4) { animation-delay: .12s; }
+.tab.active > :nth-child(5) { animation-delay: .16s; }
+.tab.active > :nth-child(n+6) { animation-delay: .2s; }
+@keyframes ui2-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.enter { animation: ui2-rise .45s var(--ease) both !important; animation-delay: calc(min(var(--i, 0), 14) * 22ms) !important; }
+.tab.active > .drop-zone, .tab.active > .toast, .tab.active > [hidden] { animation: none; }
+
+/* ---------- headings ---------- */
+.panel-head h2 {
+  font-size: 26px !important; letter-spacing: -.025em !important;
+  background: linear-gradient(180deg, #ffffff 30%, #cdbfff) !important; -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.panel-head h2::after {
+  content: ''; display: block; width: 28px; height: 3px; margin-top: 8px; border-radius: 3px;
+  background: var(--grad); box-shadow: 0 0 10px rgba(138, 99, 232, .7);
+}
+
+/* ---------- glass surfaces ---------- */
+#tab-play .dock, .home-tile, .flappy, .setting, .account-row, .power-card, .pack-card, .creator, .modal-card, .login-card,
+.toast, .version-picker, .boost-row, .manual-row, .installed-bar, .mod-list > .mod-card, #log {
+  background: var(--glass) !important; border-color: var(--glass-line) !important;
+}
+#tab-play .dock, .home-tile, .setting, .pack-card, .account-row, .modal-card, .login-card, .toast, .version-picker {
+  backdrop-filter: blur(18px) saturate(1.35) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 10px 30px rgba(0, 0, 0, .28) !important;
+}
+html[data-bgfx="off"] #tab-play .dock, html[data-bgfx="off"] .home-tile, html[data-bgfx="off"] .setting,
+html[data-bgfx="off"] .pack-card, html[data-bgfx="off"] .account-row, html[data-bgfx="off"] .modal-card,
+html[data-bgfx="off"] .login-card, html[data-bgfx="off"] .toast, html[data-bgfx="off"] .version-picker {
+  backdrop-filter: none !important; background: rgba(22, 20, 30, .94) !important;
+}
+.setting, .account-row, .power-card, .pack-card, .mod-list > .mod-card {
+  transition: border-color .2s ease, background .2s ease, transform .25s var(--ease), box-shadow .25s ease !important;
+}
+.setting:hover, .account-row:hover, .power-card:hover { border-color: var(--glass-line-2) !important; }
+.pack-card:hover { transform: translateY(-3px) !important; border-color: rgba(180, 156, 255, .35) !important; box-shadow: 0 14px 34px rgba(0, 0, 0, .35), 0 0 0 1px rgba(138, 99, 232, .25) !important; }
+.mod-list > .mod-card:hover { background: var(--glass-2) !important; }
+.mod-list > .mod-card:hover .mod-icon { transform: scale(1.06); }
+.mod-icon { transition: transform .25s var(--ease); border-radius: 10px !important; }
+.account-row.active, .pack-card.active { border-color: rgba(180, 156, 255, .55) !important; box-shadow: inset 3px 0 0 var(--accent-light), 0 0 24px rgba(138, 99, 232, .18) !important; }
+
+/* ---------- buttons ---------- */
+.ghost-btn {
+  background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .08);
+  transition: background .18s ease, border-color .18s ease, transform .15s ease, box-shadow .2s ease;
+}
+.ghost-btn:hover { background: rgba(255, 255, 255, .08); border-color: rgba(196, 178, 255, .28); }
+.ghost-btn:active, .install-btn:active, .row-icon:active { transform: scale(.97) !important; }
+.ghost-btn.accent, .install-btn:not(.done):not(.busy):not(.stop), #updateAll {
+  background: var(--grad) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 4px 14px rgba(110, 70, 220, .35) !important;
+}
+.ghost-btn.accent:hover, .install-btn:not(.done):not(.busy):not(.stop):not(:disabled):hover, #updateAll:hover {
+  background: var(--grad-hover) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 22px rgba(130, 90, 240, .55) !important;
+}
+.segmented { background: rgba(0, 0, 0, .25); border-color: rgba(255, 255, 255, .07); }
+.segmented button { transition: color .18s ease, background .2s ease; }
+.segmented button.on { background: var(--grad) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 3px 12px rgba(110, 70, 220, .4) !important; }
+.chips button { transition: all .18s ease; }
+.chips button.on { background: rgba(138, 99, 232, .22); border-color: rgba(180, 156, 255, .6); box-shadow: 0 0 12px rgba(138, 99, 232, .25); }
+.switch { transition: background .2s ease, border-color .2s ease; }
+.switch::after { transition: transform .25s var(--ease), background .2s ease; }
+.switch:checked { background: var(--grad) !important; box-shadow: 0 0 12px rgba(138, 99, 232, .45) !important; }
+input:not(.switch):not([type="range"]), select { background: rgba(0, 0, 0, .28) !important; border-color: rgba(255, 255, 255, .08); transition: border-color .18s ease, box-shadow .18s ease; }
+input:not(.switch):not([type="range"]):hover, select:hover { border-color: rgba(196, 178, 255, .25); }
+input:not(.switch):focus, select:focus { border-color: var(--accent-light) !important; box-shadow: 0 0 0 4px rgba(138, 99, 232, .2) !important; }
+.search input { padding-left: 38px; }
+:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; }
+
+/* ---------- Play tab ---------- */
+#tab-play.active { padding: 22px 32px 22px; gap: 14px; }
+#tab-play .hero-text h1 {
+  font-size: 36px !important; font-weight: 800; letter-spacing: -.035em; line-height: 1.05;
+  background: linear-gradient(180deg, #fff 35%, #d6c9ff); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 14px rgba(0, 0, 0, .5));
+}
+#tab-play .hero-text p { color: #c9c3d8; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+#tab-play .hero-text::before {
+  display: inline-flex !important; align-items: center; padding: 3px 9px 3px 20px; margin-bottom: 10px !important;
+  border-radius: 999px; border: 1px solid rgba(180, 156, 255, .3); background: rgba(138, 99, 232, .16);
+  color: #d9ceff !important; font-size: 9.5px !important; position: relative;
+}
+#tab-play .hero-text { position: relative; }
+#tab-play .hero-text::after {
+  content: ''; position: absolute; left: 9px; top: 8px; width: 6px; height: 6px; border-radius: 50%;
+  background: #b49cff; box-shadow: 0 0 8px #b49cff; animation: ui2-blink 2s ease-in-out infinite;
+}
+@keyframes ui2-blink { 50% { opacity: .35; } }
+
+.home-tiles { gap: 10px !important; border: 0 !important; overflow: visible !important; }
+.home-tile {
+  border: 1px solid var(--glass-line) !important; border-radius: var(--r) !important;
+  transition: transform .25s var(--ease), border-color .2s ease, background .2s ease, box-shadow .25s ease !important;
+}
+.home-tile:last-child { border-right: 1px solid var(--glass-line) !important; }
+.home-tile:hover {
+  transform: translateY(-3px) !important; background: var(--glass-2) !important; border-color: rgba(180, 156, 255, .38) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35), 0 0 22px rgba(138, 99, 232, .2) !important;
+}
+.home-tile svg {
+  width: 34px !important; height: 34px !important; padding: 7px; border-radius: 9px; box-sizing: border-box;
+  background: rgba(138, 99, 232, .16); stroke: var(--accent-light) !important; transition: transform .3s var(--ease), background .2s ease;
+}
+.home-tile:hover svg { transform: rotate(-8deg) scale(1.08); background: rgba(138, 99, 232, .3); }
+
+.flappy { border-radius: 14px !important; border-color: var(--glass-line) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .3); }
+
+#tab-play .dock {
+  border-radius: 16px !important; padding: 16px 18px !important; position: relative;
+  border: 1px solid rgba(180, 156, 255, .16) !important;
+}
+#tab-play .dock::before {
+  content: ''; position: absolute; left: 20px; right: 20px; top: -1px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(196, 178, 255, .7), transparent);
+}
+
+.play-btn {
+  position: relative; overflow: hidden; height: 54px !important; border-radius: 12px !important; border: 0;
+  background: var(--grad) !important; text-shadow: 0 1px 2px rgba(40, 20, 90, .6) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -3px 0 rgba(60, 30, 140, .55), 0 8px 26px rgba(110, 70, 220, .5) !important;
+  transition: transform .2s var(--ease), box-shadow .25s ease, filter .2s ease !important;
+}
+.play-btn::before {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 45%; left: -60%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .35), transparent);
+  animation: ui2-shine 3.6s ease-in-out infinite;
+}
+@keyframes ui2-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.play-btn:hover {
+  transform: translateY(-2px) !important; background: var(--grad-hover) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), inset 0 -3px 0 rgba(60, 30, 140, .55), 0 12px 34px rgba(130, 90, 240, .7) !important;
+}
+.play-btn:active { transform: translateY(0) scale(.98) !important; }
+.play-btn.running { background: linear-gradient(135deg, #3a1a22, #2a1218) !important; box-shadow: inset 0 0 0 1px #6a2a33, 0 8px 22px rgba(0, 0, 0, .35) !important; }
+.play-btn.running::before, .play-btn:disabled::before { display: none; }
+.progress-bar { height: 6px; border-radius: 6px !important; background: rgba(0, 0, 0, .35) !important; overflow: hidden; }
+.progress-bar div {
+  background: linear-gradient(90deg, #8a63e8, #c4b0ff, #8a63e8) !important; background-size: 200% 100% !important;
+  animation: ui2-flow 1.4s linear infinite !important; box-shadow: 0 0 10px rgba(180, 156, 255, .6) !important;
+}
+@keyframes ui2-flow { to { background-position: -200% 0; } }
+
+.bg-arrow { backdrop-filter: blur(8px) !important; }
+
+/* ---------- toast, modals ---------- */
+.toast { border-left: 0 !important; border-radius: 12px !important; animation: ui2-toast .35s var(--ease) both; }
+.toast::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--grad); }
+@keyframes ui2-toast { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+.modal { background: rgba(6, 5, 10, .6) !important; backdrop-filter: blur(6px) !important; animation: fade-in .2s ease-out; }
+.modal-card, .login-card { border-radius: 16px !important; animation: ui2-pop .35s var(--ease) both; }
+@keyframes ui2-pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.login { background: rgba(8, 7, 12, .7) !important; backdrop-filter: blur(10px) !important; }
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(196, 178, 255, .16) !important; border: 4px solid transparent !important; background-clip: padding-box !important; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(196, 178, 255, .32) !important; border: 4px solid transparent !important; background-clip: padding-box !important; }
+#modsInstalled .installed-search { background: transparent; backdrop-filter: blur(14px) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab.active, .tab.active > *, .enter, .play-btn::before, .progress-bar div, #tab-play .hero-text::after { animation: none !important; }
+}
+
+/* Play: the "Now playing" pill on its own line, and quick links as icon + two lines of text. */
+#tab-play .hero-text::before { display: flex !important; width: max-content; }
+.home-tile {
+  display: grid !important; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 1px;
+  align-items: center; padding: 12px 14px !important;
+}
+.home-tile svg { grid-row: 1 / 3; }
+.home-tile strong { grid-column: 2; align-self: end; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-tile span { display: none !important; }
+.home-tile em { grid-column: 2; align-self: start; font-size: 11.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted) !important; }
+.home-tile em:empty::before { content: 'Open'; }
+.home-tile em.has-updates { color: var(--accent-light) !important; }
+/* Version type chips: compact, wrapping under each other when the window is narrow. */
+#typeChips { gap: 4px; }
+#typeChips button { padding: 3px 8px; font-size: 11px; white-space: nowrap; }
+
+/* ---------- spotlight: a soft light under the pointer on cards (ui2.js sets --mx / --my) ---------- */
+:is(.home-tile, .setting, .pack-card, .mod-card, .account-row, .power-card, .boost-row, .plus-cape, #tab-play .dock, .modal-card).lit {
+  background-image: radial-gradient(420px circle at var(--mx) var(--my), rgba(180, 156, 255, .11), transparent 55%) !important;
+}
+:is(.home-tile, .setting, .pack-card, .account-row, .power-card, .boost-row, #tab-play .dock).lit { border-color: rgba(196, 178, 255, .26) !important; }
+
+/* ---------- ripples ---------- */
+.has-ripple { position: relative; overflow: hidden; }
+.ripple {
+  position: absolute; border-radius: 50%; pointer-events: none; z-index: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 65%);
+  transform: scale(0); animation: ui2-ripple .6s ease-out forwards;
+}
+@keyframes ui2-ripple { to { transform: scale(1); opacity: 0; } }
+
+/* ---------- Play: greeting + the player's head ---------- */
+.hero-row { display: flex; align-items: flex-end; gap: 18px; flex: none; }
+.hero-row .hero-text { flex: 1; min-width: 0; }
+.hero-head.head {
+  --s: 10; border-radius: 14px; flex: none; margin-bottom: 4px;
+  box-shadow: 0 0 0 3px rgba(180, 156, 255, .35), 0 12px 32px rgba(0, 0, 0, .5), 0 0 40px rgba(138, 99, 232, .35);
+  animation: ui2-float 6s ease-in-out infinite;
+}
+.hero-head[hidden] { display: none; }
+@keyframes ui2-float { 50% { transform: translateY(-4px); } }
+.hero-greet { font-size: 13px; font-weight: 600; color: #d9ceff; margin: 0 0 2px; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+#tab-play .hero-text::before { margin-bottom: 8px !important; }
+#tab-play .hero-text h1 { font-size: 40px !important; }
+html[data-bgfx="off"] .hero-head.head { animation: none; }
+
+/* ---------- PLAY: a slowly turning light ring around the button ---------- */
+@property --spin { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.play-btn { isolation: isolate; }
+.play-btn::after {
+  content: '' !important; display: block !important; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--spin), transparent 0 70%, rgba(255, 255, 255, .9) 82%, transparent 92%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: ui2-spin 3.2s linear infinite;
+}
+@keyframes ui2-spin { to { --spin: 360deg; } }
+.play-btn.running::after, .play-btn:disabled::after { display: none !important; }
+html[data-bgfx="off"] .play-btn::after, html[data-bgfx="off"] .play-btn::before { animation: none; opacity: 0; }
+
+/* ---------- title bar search + command palette ---------- */
+.titlebar { gap: 16px; }
+.tb-search {
+  -webkit-app-region: no-drag; margin: 0 auto; width: min(380px, 40%); height: 24px; display: flex; align-items: center; gap: 8px;
+  padding: 0 6px 0 10px; border-radius: 7px; cursor: pointer; font: inherit; font-size: 11.5px; color: var(--faint);
+  background: rgba(255, 255, 255, .045); border: 1px solid rgba(255, 255, 255, .07);
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+  transform: translateX(-60px); /* centred over the page, not under the window buttons */
+}
+.tb-search:hover { background: rgba(255, 255, 255, .08); border-color: rgba(196, 178, 255, .3); color: var(--muted); }
+.tb-search svg, .cmdk-input svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; flex: none; }
+.tb-search span { flex: 1; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tb-search kbd, .cmdk kbd {
+  font: 600 10px Inter, system-ui, sans-serif; color: var(--muted); padding: 1px 5px; border-radius: 4px;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1);
+}
+.cmdk {
+  position: fixed; inset: 0; z-index: 200; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh;
+  background: rgba(6, 5, 10, .55); backdrop-filter: blur(6px) !important; animation: fade-in .15s ease-out;
+}
+.cmdk[hidden] { display: none; }
+.cmdk-card {
+  width: min(600px, 92vw); max-height: 64vh; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 16px; background: rgba(22, 19, 31, .86); border: 1px solid rgba(196, 178, 255, .2);
+  backdrop-filter: blur(24px) saturate(1.4) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .3), 0 0 60px rgba(138, 99, 232, .2);
+  animation: ui2-pop .25s var(--ease) both;
+}
+.cmdk-input { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid rgba(255, 255, 255, .07); color: var(--muted); }
+.cmdk-input svg { width: 18px; height: 18px; }
+.cmdk-input input {
+  flex: 1; height: 54px !important; border: 0 !important; background: transparent !important; box-shadow: none !important;
+  font: 500 15px Inter, system-ui, sans-serif; color: #fff; outline: none; padding: 0 !important;
+}
+.cmdk-list { overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 1px; }
+.cmdk-item {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; text-align: left;
+  padding: 8px 10px; border-radius: 9px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer;
+}
+.cmdk-item svg {
+  width: 30px; height: 30px; padding: 7px; box-sizing: border-box; border-radius: 8px; fill: none; stroke: var(--accent-light);
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; background: rgba(138, 99, 232, .12);
+}
+.cmdk-item strong { font-weight: 600; font-size: 13.5px; }
+.cmdk-item span { font-size: 11.5px; color: var(--faint); }
+.cmdk-item.on { background: linear-gradient(90deg, rgba(138, 99, 232, .28), rgba(138, 99, 232, .08)); box-shadow: inset 0 0 0 1px rgba(180, 156, 255, .25); }
+.cmdk-item.on svg { background: var(--grad); stroke: #fff; }
+.cmdk-item.on span { color: #d9ceff; }
+.cmdk-empty { padding: 28px; text-align: center; color: var(--faint); }
+.cmdk-foot { display: flex; gap: 16px; padding: 9px 14px; border-top: 1px solid rgba(255, 255, 255, .07); font-size: 11px; color: var(--faint); }
+.cmdk-foot kbd { margin-right: 3px; }
+
+/* ---------- nav: badges and dots glow a little, the active item's text slides in ---------- */
+.nav-text { transition: transform .3s var(--ease); }
+.nav-btn.active .nav-text { transform: translateX(2px); }
+.nav-btn.active .nav-badge { background: var(--grad) !important; box-shadow: 0 0 10px rgba(138, 99, 232, .5); }
+.nav-btn.has-updates .nav-text::after { box-shadow: 0 0 8px var(--accent-light); background: var(--accent-light) !important; }
+
+/* ---------- Plus page cards pick up the same motion ---------- */
+.plus-cape { transition: transform .3s var(--ease), box-shadow .3s ease, border-color .2s ease !important; }
+.plus-cape:not(.locked):hover { transform: translateY(-4px) !important; box-shadow: 0 16px 36px rgba(0, 0, 0, .45), 0 0 24px rgba(138, 99, 232, .25) !important; }
+.cmdk-input input:focus { border: 0 !important; box-shadow: none !important; }

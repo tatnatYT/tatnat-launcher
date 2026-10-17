@@ -41,6 +41,8 @@ function showTab(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === `tab-${name}`));
   moveIndicator();
+  const crumb = document.querySelector(`.nav-btn[data-tab="${name}"] .nav-text`);
+  if (crumb) $('tbCrumb').textContent = crumb.textContent;
   if (name === 'console') $('logDot').hidden = true;
   if (name === 'mods') refreshMods();
   if (name === 'packs') refreshPacks();
