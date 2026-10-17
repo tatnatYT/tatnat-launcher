@@ -3,7 +3,8 @@
 // shooting star over it. The arrows on the Play tab switch pictures with a zoom-and-sweep
 // transition; the choice is remembered on this PC.
 (() => {
-  const COUNT = 3;
+  const COUNT = 4; // three pictures, then the animated "Live eclipse" (live-bg.js)
+  const LIVE = 3;
   const src = i => `../../assets/backgrounds/${i + 1}.webp`;
   const stage = document.getElementById('bgStage');
   const sparkles = document.getElementById('bgSparkles');
@@ -20,9 +21,11 @@
   }
   setFx(fx);
   document.querySelectorAll('#bgEffects button').forEach(b => b.addEventListener('click', () => setFx(b.dataset.fx)));
-  try { index = Math.min(COUNT - 1, Math.max(0, Number(localStorage.getItem('bg-index')) || 0)); } catch { /* storage off */ }
+  // Nothing picked yet: start on the Live eclipse.
+  try { const saved = localStorage.getItem('bg-index'); index = saved === null ? LIVE : Math.min(COUNT - 1, Math.max(0, Number(saved) || 0)); } catch { index = LIVE; }
 
   function makeLayer(i) {
+    if (i === LIVE && window.makeLiveEclipse) return window.makeLiveEclipse();
     const el = document.createElement('div');
     el.className = 'bg-layer';
     el.innerHTML = '<div class="bg-fill"></div><div class="bg-img"></div>';
@@ -84,7 +87,7 @@
   for (let i = 0; i < COUNT; i++) {
     const d = document.createElement('button');
     d.className = 'bg-dot';
-    d.title = `Background ${i + 1}`;
+    d.title = i === LIVE ? 'Live eclipse (animated)' : `Background ${i + 1}`;
     d.addEventListener('click', () => show(i, i > index ? 1 : -1));
     dots.append(d);
   }

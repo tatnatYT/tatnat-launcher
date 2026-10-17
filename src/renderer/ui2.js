@@ -561,6 +561,19 @@
   });
   window.eclipseWarp = warp;
 
+  // Clicking empty space sends out a small shockwave (buttons have their own ripple).
+  main.addEventListener('pointerdown', e => {
+    if (calm() || e.button !== 0) return;
+    if (e.target.closest('button, input, select, textarea, a, canvas, .switch, label, .mod-card, .plus-cape, .pack-card')) return;
+    const r = main.getBoundingClientRect();
+    const w = document.createElement('i');
+    w.className = 'shockwave';
+    w.style.left = `${e.clientX - r.left}px`;
+    w.style.top = `${e.clientY - r.top}px`;
+    main.append(w);
+    setTimeout(() => w.remove(), 650);
+  });
+
   const fill = $id('progressFill');
   if (fill && play) new MutationObserver(() => play.style.setProperty('--p', fill.style.width || '0%'))
     .observe(fill, { attributes: true, attributeFilter: ['style'] });
