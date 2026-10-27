@@ -1331,7 +1331,44 @@ const ICONS = {
   export: 'M12 3v12M7 8l5-5 5 5M5 21h14',
   folder: 'M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  rename: 'M4 7V5h10v2M9 5v14M6 19h6M15 13h5M17.5 13v6',
 };
+
+// Rename a modpack in place: the name turns into a text box (Enter saves, Esc cancels).
+function renamePack(pack, h) {
+  const input = document.createElement('input');
+  input.className = 'pack-rename';
+  input.value = pack.name;
+  input.maxLength = 48;
+  input.spellcheck = false;
+  h.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = async save => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (save && name && name !== pack.name) {
+      try {
+        await api.renameModpack({ id: pack.id, name });
+        toast(`Renamed to ${name}`);
+      } catch (err) {
+        toast(`Could not rename: ${cleanError(err)}`);
+      }
+      await loadModpacks();
+      renderPackChip();
+      updateHero();
+    } else {
+      input.replaceWith(h);
+    }
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
 
 function renderModpacks() {
   const grid = $('modpackGrid');
@@ -1346,6 +1383,8 @@ function renderModpacks() {
     text.style.minWidth = '0';
     const h = document.createElement('h4');
     h.textContent = pack.name;
+    h.title = 'Double-click to rename';
+    h.addEventListener('dblclick', () => renamePack(pack, h));
     const p = document.createElement('p');
     p.textContent = `Minecraft ${pack.mcVersion} · ${pack.modCount} mod${pack.modCount === 1 ? '' : 's'}`;
     text.append(h, p);
@@ -1380,6 +1419,7 @@ function renderModpacks() {
       $('play').click();
     });
     actions.append(play,
+      iconButton('Rename', ICONS.rename, () => renamePack(pack, h)),
       iconButton('Edit mods & texture packs', ICONS.edit, () => { setActivePack(pack.id); showTab('mods'); }),
       iconButton('Export as .mrpack', ICONS.export, () => exportModpack(pack)),
       iconButton('Open folder', ICONS.folder, () => api.openModpackFolder({ id: pack.id })),

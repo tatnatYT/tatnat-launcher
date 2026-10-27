@@ -955,7 +955,8 @@ ipcMain.handle('game:instances', () => instanceList());
 
 // ---------- Discord Rich Presence ----------
 // Pictures are Minecraft heads served by mc-heads.net, so the Discord app needs no uploaded art.
-const LOGO_URL = 'https://mc-heads.net/avatar/5de9cae8516c461bb8051e7d52c00a26/256'; // tatnat
+// The Eclipse logo (Discord shows pictures by URL), from the launcher's GitHub repo.
+const LOGO_URL = 'https://raw.githubusercontent.com/tatnatYT/tatnat-launcher/main/assets/logo-256.png';
 const TAB_STATUS = {
   play: 'Picking a version', modpacks: 'Building a modpack', mods: 'Browsing mods', packs: 'Picking texture packs', accounts: 'Managing accounts',
   console: 'Reading the console', settings: 'Tweaking settings', credits: 'Reading the credits',

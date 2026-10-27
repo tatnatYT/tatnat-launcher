@@ -732,3 +732,9 @@ html[data-bgfx="off"] .seg-pill { transition: none; }
 
 /* The splash content stays hidden until the eclipse intro takes over (or falls back to the plain logo). */
 #splash:not(.has-eclipse):not(.plain) .splash-inner { opacity: 0; }
+
+/* Renaming a modpack: the name becomes a text box. */
+.pack-card input.pack-rename { width: 100%; height: 30px !important; padding: 0 8px; font: 600 15px Inter, system-ui, sans-serif; color: #fff; border-radius: 6px; }
+.pack-card h4[title] { cursor: text; }
+.pack-card-actions .install-btn { min-width: 64px; flex: 1 0 64px; }
+.pack-card-actions .row-icon { flex: none; }
